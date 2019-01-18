@@ -1,0 +1,189 @@
+---
+title: "Hypothesis Testing/Statistical Analysis"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+# Analysising clinical and cognitive data across three time points in a sample of mild traumatic brain injury (mtbi) patients
+# Hannah Coyle, hannah.coyle@monash.edu, January 2019
+knitr::opts_chunk$set(echo = TRUE)
+here<-"/Users/han.coyle/Documents/PHD-Data-Analysis/PHD-Data-Analysis"
+setwd(here)
+```
+
+```{load libraries, include=FALSE}
+library(tidyverse) #formatting data for analysis
+library(psych) #package for descriptive and analytic statistics
+library(dplyr) #manipulating your data
+library(ggplot2) #visualising your results
+library(plyr) #manipulating your data (splitting, applying and combining)
+library (lme4) #linear models
+library (psycho) #format the output of statistical methods to directly paste them into a manuscript
+```
+
+```{r testing for normality, echo=FALSE}
+##Plotting histograms and ensuring axes are same size
+par(mfrow = c(1,2))
+hist(WTAR[group==1],probability = T,main="Control WTAR",xlim=c(20,50),ylim=c(0.00,0.10))
+hist(WTAR[group==2],probability = T,main="mTBI WTAR",xlim=c(20,50),ylim=c(0.00,0.10))
+
+#Using normal Q-Q plot (better when small sample sizes than a histogram)
+qqnorm(WTAR,main="QQ plot of WTAR data",pch=19)
+qqline(WTAR)
+
+#Assessing skewedness (negative values indicate left skew and positive indicate right skew) and kurtosis
+skewness(age,na.rm=TRUE)
+kurtosis(age,na.rm=TRUE)
+
+##Testing for normality (if p> .05 normality can be assumed- use Shapiro Wilk for smaller samples, non normal data means non paramertic tests should be used)
+shapiro.test(WTAR)
+
+##not sure how to apply a function to multiple variables and print the ouput all at the same time?? i.e if wanted to check normality for all variableli
+
+##transforming your data- for skewed data common transformations include square root, cube root, and log - see for list of code http://rcompanion.org/handbook/I_12.html
+libary(rcompanion)
+#Cube transform results in age being normally distributed.
+A_cbrt <- sign(age) * abs(age)^(1/3)
+hist(A_cbrt)
+shapiro.test(A_cbrt)
+
+#Log transform (strongest)
+A_log <- log(age) 
+hist(A_log)
+shapiro.test(A_log)
+
+```
+
+```{r statistical analysis-parametric tests (t-test, ANOVA), echo=TRUE}
+#parametric tests
+
+#two sample t-test = independent, paired sample t-test = dependent (assessing whether the variance for two samples is equal)
+
+#test for equality of variance (F test to compare the variances of two samples from normal populations)- data must be normal (looking for p>.05 to support the null there is no difference)
+shapiro.test(Coding_BL)
+var.test(Coding_BL,Coding_T2)
+
+#If variances are assumed equal, then you need to specify var.equal=TRUE when using t.test *two-tailed is the default, but can change* (p<.05 = sig difference in the means)
+t.test(Coding_BL,Coding_T1,var.equal = TRUE)
+boxplot(Coding_BL,Coding_T1)
+
+#by group (with equal variance)
+var.test(Coding_BL~group)
+t.test(Coding_BL~ group, var.equal=TRUE)
+boxplot(Coding_BL~ group,main="Processing Speed",names=c("control","mTBI"),ylab="Coding Performance", xlab="Baseline")
+
+#with unequal variance - just change var.equal=FALSE
+
+#paired sample t test (for dependent variables)- find the difference between two sets of data (find mean and SD of these differences)- will use df that have been filtered
+
+#as a data checking precaution  
+#create df with just controls and coding scores
+Coding_long_df<-select(control_df,code,Coding_BL,Coding_T1,Coding_T2)
+#create difference score
+d<- with(control_df,Coding_T1-Coding_BL)
+#run paired sample t-test
+t.test(control_df$Coding_BL,control_df$Coding_T1,paired=TRUE,var.equal=TRUE)
+#if want to see if coding speed at T1 has improved compared to baseline for both groups seperately (alternative ="greater" is the alternative that x has a larger mean than y)- normality and homogeneity of variance has been shown to hold)
+t.test(control_df$Coding_BL,control_df$Coding_T1,paired=TRUE,var.equal=TRUE,alternative="less")
+t.test(mtbi_df$Coding_BL,mtbi_df$Coding_T1,paired=TRUE,var.equal=TRUE,alternative="less")
+
+##ANOVA (test equality of variances and equality of means for control group for coding across BL-T1-T2)
+#first create data correct data frame
+control_df_coding<-select(control_df, code,Coding_BL, Coding_T1,Coding_T2)
+control_df_coding<- melt(control_df_coding,id.vars = "code", measure.vars = c("Coding_BL", "Coding_T1","Coding_T2"))
+#run the anova
+control_cod_aov<-aov(data=control_df_coding, formula=value~ variable)
+summary(control_cod_aov)
+
+#visualise the data (even though above is not significant)
+boxplot(control_df$Coding_BL,control_df$Coding_T1,control_df$Coding_T2)
+
+#post hoc tests (if p<.05 = sig difference)
+TukeyHSD(control_cod_aov)
+
+#for mtbi (be aware there is a lot of missing data that hasn't been controlled for)
+#first create data correct data frame
+mtbi_df_coding<-select(mtbi_df, code,Coding_BL, Coding_T1,Coding_T2)
+mtbi_df_coding<- melt(mtbi_df_coding,id.vars = "code", measure.vars = c("Coding_BL", "Coding_T1","Coding_T2"))
+#run the anova
+mtbi_cod_aov<-aov(data=mtbi_df_coding, formula=value~ variable)
+summary(mtbi_cod_aov)
+
+#visualise the data (even though above is not significant)
+boxplot(mtbi_df$Coding_BL,mtbi_df$Coding_T1,mtbi_df$Coding_T2)
+#post hoc tests
+TukeyHSD(mtbi_cod_aov)
+
+```
+
+```{r linear regression, echo=FALSE, mixed models, echo=TRUE}
+#Information/tutorial comes from https://ourcodingclub.github.io/2017/03/15/mixed-models.html
+
+# with linear regression it is good practice to standardise your explanatory variables before proceeding so they have a mean of 0 and a standard deviation of 1
+COMBINED_COG_PhD$age2 <- scale(COMBINED_COG_PhD$age)
+COMBINED_COG_PhD$Coding_BL2 <- scale(COMBINED_COG_PhD$Coding_BL)
+
+#only need to transform explanatory variables (so delete this column from df)
+COMBINED_COG_PhD$Coding_BL2 <- NULL
+# question is processing speed affected by age?
+
+# fit the model with processing speed as the response and age as the predictor
+basic.lm <- lm(Coding_BL ~ age, data= COMBINED_COG_PhD)
+summary(basic.lm)
+# create df and remove labels otherwise can't plot with ggplot (also remove class!!!!) - and snaps for getting the pipe to work.
+
+library(labelled)
+lm_df<- COMBINED_COG_PhD  %>% 
+  remove_labels() %>%
+  select(group, age, Coding_BL) %>%
+  data.frame()
+
+lm_df$age2 <- scale(lm_df$age)
+
+#plot the data with ggplot2
+(prelim_plot <- ggplot(lm_df, aes(x = age, y = Coding_BL)) +
+  geom_point() +
+  geom_smooth(method = "lm")) #possibly the older you are the slower you are?
+
+#plot the residuals
+plot(basic.lm, which = 1)  #red line should be nearly flat like the dotted grey line
+#plot qq plot
+plot(basic.lm, which = 2) #points should ideally fall onto the diagonal dashed line
+#look at processing speed between  two groups
+boxplot(Coding_BL ~ group, data = lm_df)
+#plot it and colour points by group
+ (colourplot<-ggplot(lm_df, aes(x = age, y = Coding_BL, colour = group)) +
+  geom_point(size=2) +
+     xlab("Age")+
+     ylab("Processing Speed")+
+  theme_classic()+
+    theme(legend.position = "none") +
+    theme(plot.title = element_text(hjust = 0.5))+
+     ggtitle("Relationship between Age and Processing Speed")
+   )
+#look at data split by group
+(split_plot <- ggplot(aes(age, Coding_BL), data = lm_df) + 
+  geom_point() + 
+  facet_wrap(~ group) + 
+  xlab("Age") + 
+  ylab("Processing Speed"))
+
+# dont want run two seperate anaylses- want to use all the data but account for data from different groups
+
+#add group as a fixed effect to our basic linear model to estimate differences in processing speed between the groups
+group.lm <- lm(age ~ Coding_BL + group, data = lm_df)
+summary(group.lm)
+
+#however that is not what I am interested in, want to control for the variation coming from group
+
+#want to know whether there is an association between age and processign speed, AND we want to know if that association exists after controlling for the variation in group
+
+mixed.lmer <- lmer(Coding_BL ~ age2 + (1|group), data = lm_df)
+summary(mixed.lmer)
+plot(mixed.lmer)
+
+qqnorm(resid(mixed.lmer))
+qqline(resid(mixed.lmer))
+
+
