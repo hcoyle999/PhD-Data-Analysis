@@ -1,0 +1,92 @@
+---
+title: "Normality_testing"
+author: "Hannah Coyle"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
+                      echo=TRUE, warning=FALSE, message=FALSE, eval=TRUE)
+library(knitr)
+library(rmarkdown)
+library(psych)
+render('Normality_testing.Rmd')
+```
+
+
+
+```{r Open SPSS, include=FALSE}
+## Opening my SPPS database and converting to R file
+#set wd
+here<-"/Users/han.coyle/Documents/PHD-Data-Analysis/PHD-Data-Analysis"
+setwd(here)
+## the following is to ensure that the SPSS data is loaded correctly so you can see variable labels and value labels 
+#load database as a list
+COMBINED_COG_PhD<-haven::read_spss("COMBINED_COG_PhD.sav",user_na=FALSE)
+View(COMBINED_COG_PhD)
+save(COMBINED_COG_PhD,file="~/Documents/PHD-Data-Analysis/PHD-Data-Analysis/COMBINED_COG_PhD.Rdata")
+```
+
+
+```{r data cleaning, include= FALSE}
+## Initial data cleaning steps
+#create a look up table to convert numeric codes into meaninful strings
+lut <-c ("1" = "control", "2" = "mtbi")
+lut_1 <- c ("1" = "female", "2" = "male")
+
+#combine/use this to relabel 1 and 2's to control and mtbi- add to df
+COMBINED_COG_PhD$group <- lut[COMBINED_COG_PhD$group]
+COMBINED_COG_PhD$sex <- lut_1[COMBINED_COG_PhD$sex]
+
+#tidying up variable names
+names(COMBINED_COG_PhD) <- tolower(names(COMBINED_COG_PhD))
+
+#attach to database
+attach(COMBINED_COG_PhD)
+
+#create dataframes for two groups
+control_df <- filter(COMBINED_COG_PhD,group == "control")
+mtbi_df <- filter(COMBINED_COG_PhD,group == "mtbi")
+
+# clinical data at baseline
+clin_data_BL <- select(COMBINED_COG_PhD,code, group, hads_anxiety_bl:mfi_mf_bl) 
+# cog data at baseline
+cog_data_BL <- select(COMBINED_COG_PhD,code, group, wtar:bvmt_recognition)
+```
+#WTAR data
+```{r plots and normality, fig.width=8, fig.height=6, include=TRUE}
+##Summary
+describe(control_df$wtar)
+describe(mtbi_df$wtar)
+pct_miss(COMBINED_COG_PhD$wtar)
+
+##Plotting histograms and ensuring axes are same size
+par(mfrow = c(1,2))
+hist(wtar[group=="control"],probability = T,main="Control WTAR",xlim=c(20,50),ylim=c(0.00,0.10))
+hist(wtar[group=="mtbi"],probability = T,main="mTBI WTAR",xlim=c(20,50),ylim=c(0.00,0.10))
+
+#Using normal Q-Q plot (better when small sample sizes than a histogram)
+qqnorm(wtar[group=="control"],main="QQ plot of WTAR control data",pch=19)
+qqline(wtar)
+qqnorm(wtar[group=="mtbi"],main="QQ plot of WTAR control data",pch=19)
+qqline(wtar)
+
+#Assessing skewedness (negative values indicate left skew and positive indicate right skew) and kurtosis
+skew(wtar[group=="control"],na.rm=TRUE)
+skew(wtar[group=="mtbi"],na.rm=TRUE)
+kurtosi(wtar[group=="control"],na.rm=TRUE)
+kurtosi(wtar[group=="mtbi"],na.rm=TRUE)
+
+##Testing for normality (if p> .05 normality can be assumed- use Shapiro Wilk for smaller samples, non normal data means non paramertic tests should be used)
+shapiro.test(wtar[group=="control"])
+shapiro.test(wtar[group=="mtbi"])
+```
+
+#WTAR for both groups non-normally distributed
+
+```{r normality, fig.width=8, fig.height=6, include=TRUE}
+##Testing for normality (if p> .05 normality can be assumed- use Shapiro Wilk for smaller samples, non normal data means non paramertic tests should be used)
+shapiro.test(wtar[group=="control"])
+shapiro.test(wtar[group=="mtbi"])
+```
