@@ -42,7 +42,7 @@ setwd(here)
 ```
 
 ##Load libraries
-```{load libraries, include=FALSE}
+```{r load libraries, include=FALSE}
 library(tidyverse) #formatting data for analysis
 library(psych) #package for descriptive and analytic statistics
 library(dplyr) #manipulating your data
@@ -50,6 +50,7 @@ library(ggplot2) #visualising your results
 library(plyr) #manipulating your data (splitting, applying and combining)
 library(finalfit) #create final tables whilst modelling and plotting- also useful for identifying missing data
 library(naniar) # for summarising, visualising and manipulating missing data
+library(tableone) # for descriptive table
 ```
 
 
@@ -62,6 +63,55 @@ setwd(here)
 COMBINED_COG_PhD<-haven::read_spss("COMBINED_COG_PhD.sav",user_na=FALSE)
 View(COMBINED_COG_PhD)
 save(COMBINED_COG_PhD,file="~/Documents/PHD-Data-Analysis/PHD-Data-Analysis/COMBINED_COG_PhD.Rdata")
+```
+## Initial data cleaning steps
+```{r data cleaning, include= FALSE}
+#create a look up table to convert numeric codes into meaninful strings
+lut <-c ("1" = "control", "2" = "mtbi")
+lut_1 <- c ("1" = "female", "2" = "male")
+
+#combine/use this to relabel 1 and 2's to control and mtbi- add to df
+COMBINED_COG_PhD$group <- lut[COMBINED_COG_PhD$group]
+COMBINED_COG_PhD$sex <- lut_1[COMBINED_COG_PhD$sex]
+
+#tidying up variable names
+names(COMBINED_COG_PhD) <- tolower(names(COMBINED_COG_PhD))
+```
+## Create demographics table
+```{r Demographics table, include=FALSE}
+library(tableone)
+#change categorical variables to factors
+myVars <- c("sex", "age", "education", "wtar")
+catVars <- c("sex")
+
+#create table by group
+tab1 <- CreateTableOne(vars = myVars, strata = "group" , data = COMBINED_COG_PhD, factorVars = catVars)
+print(tab1)
+
+#if you want to specify nonnormal data you can do that as well (quote arguments avoids the mishandling of spaces)
+  #create a variables that are nonnormal (haven't checked that these aren't yet)
+print(tab1, nonnormal= c("age", "education"), exact= c("wtar"), cramVars = "sex", quote= TRUE)
+
+#view categorical and continuous parts of the table
+tab1$CatTable
+tab1$ContTable
+
+#export into .csv/ excel and save table 
+library(xlsx)
+tab1Mat<- print(tab1, exact="stage", quote=TRUE, nospaces=TRUE,printToggle = FALSE)
+write.csv(tab1Mat, file="demographics.csv")
+
+```
+## Create data frames for specific data (e.g. clinical, cognitive)
+```{r Create data frames, include = FALSE}
+# clinical data at baseline
+clin_data_BL <- select(COMBINED_COG_PhD,code, group, hads_anxiety_bl:mfi_mf_bl) 
+# cog data at baseline
+cog_data_BL <- select(COMBINED_COG_PhD,code, group, wtar:bvmt_recognition)
+
+#make dfs for my two groups
+control_df <- filter(COMBINED_COG_PhD,group == "control")
+mtbi_df <- filter(COMBINED_COG_PhD,group == "mtbi")
 ```
 
 ## Calculating descriptive statistics
@@ -92,7 +142,7 @@ describeBy(demo,group=group)
 #code above should work but is not- this is a better option because it is not locked to a particular row
 
 #quick and dirty approach
-COMBINED_COG_PhD <- COMBINED_COG_PhD[-c(55),]
+#COMBINED_COG_PhD <- COMBINED_COG_PhD[-c(55),]
 
 #tidying up variable names
 names(COMBINED_COG_PhD) <- tolower(names(COMBINED_COG_PhD))
@@ -106,8 +156,8 @@ age_over_30 <- filter(COMBINED_COG_PhD,age > 30)
 (age_under_30 <-filter(COMBINED_COG_PhD, age < 30))
 
 #make dfs for my two groups
-control_df <- filter(COMBINED_COG_PhD,group == 1)
-mtbi_df <- filter(COMBINED_COG_PhD,group == 2)
+control_df <- filter(COMBINED_COG_PhD,group == "control")
+mtbi_df <- filter(COMBINED_COG_PhD,group == "mtbi")
 
 #to filter effectively need to know the operators, e.g. >, >=, <, <=, != (not equal), and == (equal).
 

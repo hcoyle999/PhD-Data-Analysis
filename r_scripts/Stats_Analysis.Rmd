@@ -23,23 +23,9 @@ library (psycho) #format the output of statistical methods to directly paste the
 ```
 
 ```{r testing for normality, echo=FALSE}
-##Plotting histograms and ensuring axes are same size
-par(mfrow = c(1,2))
-hist(WTAR[group==1],probability = T,main="Control WTAR",xlim=c(20,50),ylim=c(0.00,0.10))
-hist(WTAR[group==2],probability = T,main="mTBI WTAR",xlim=c(20,50),ylim=c(0.00,0.10))
 
-#Using normal Q-Q plot (better when small sample sizes than a histogram)
-qqnorm(WTAR,main="QQ plot of WTAR data",pch=19)
-qqline(WTAR)
 
-#Assessing skewedness (negative values indicate left skew and positive indicate right skew) and kurtosis
-skewness(age,na.rm=TRUE)
-kurtosis(age,na.rm=TRUE)
 
-##Testing for normality (if p> .05 normality can be assumed- use Shapiro Wilk for smaller samples, non normal data means non paramertic tests should be used)
-shapiro.test(WTAR)
-
-##not sure how to apply a function to multiple variables and print the ouput all at the same time?? i.e if wanted to check normality for all variableli
 
 ##transforming your data- for skewed data common transformations include square root, cube root, and log - see for list of code http://rcompanion.org/handbook/I_12.html
 libary(rcompanion)
