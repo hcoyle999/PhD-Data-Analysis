@@ -1,16 +1,21 @@
 ---
-title: "Normality_testing"
+title: "Clinical_data"
 author: "Hannah Coyle"
+email: "hannah.coyle@monash.edu"
 date: "`r Sys.Date()`"
 output: html_document
 ---
-This r markdown document and output is for my clinical data. Includes visualisation, tests of normality and hypothesis testing. 
+# Analysising clinical and cognitive data across three time points in a sample of mild traumatic brain injury (mtbi) patient.s
+
+# Hannah Coyle, , January 2019
+  #This r markdown document and output is for my clinical data. Includes visualisation, tests of normality and hypothesis testing. 
 
 ```{r global_option, include=FALSE}
 knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
                       echo=TRUE, warning=FALSE, message=FALSE, eval=TRUE)
-#notes to self when knitting rmarkdown files, all objects that are called need to have been created in this workspace
-# [https://rmarkdown.rstudio.com/lesson-8.html] is a good resource on all things markdown
+#notes to self 
+  #when knitting rmarkdown files, all objects that are called need to have been created in this workspace
+  # [https://rmarkdown.rstudio.com/lesson-8.html] is a good resource on all things markdown
 
 #resource on dealing with outliers
 #http://r-statistics.co/Outlier-Treatment-With-R.html
@@ -26,8 +31,7 @@ library(naniar)
 normality_testing <-"/Users/han.coyle/Documents/PHD-Data-Analysis/PHD-Data-Analysis/r_scripts/Normality_testing.Rmd"
 ```
 
-
-```{r Open SPSS, include=FALSE}
+```{r get raw SPSS data, include=FALSE}
 ## Opening my SPPS database and converting to R file
 #set wd
 rawdata<-"/Users/han.coyle/Documents/PHD-Data-Analysis/PHD-Data-Analysis/COMBINED_COG_PhD.sav"
@@ -36,7 +40,6 @@ rawdata<-"/Users/han.coyle/Documents/PHD-Data-Analysis/PHD-Data-Analysis/COMBINE
 COMBINED_COG_PhD<-haven::read_spss(rawdata,user_na=FALSE)
 save(COMBINED_COG_PhD,file="~/Documents/PHD-Data-Analysis/PHD-Data-Analysis/COMBINED_COG_PhD.Rdata")
 ```
-
 
 ```{r data cleaning, include= FALSE}
 ## Initial data cleaning steps
@@ -63,9 +66,9 @@ clin_data_BL <- select(COMBINED_COG_PhD,code, group, hads_anxiety_bl:mfi_mf_bl)
 # cog data at baseline
 cog_data_BL <- select(COMBINED_COG_PhD,code, group, wtar:bvmt_recognition)
 ```
-
+## Descriptives, visualisation, normality and hypothesis testing 
 # 1. WTAR Clinical data (measure of premorbid intelligence)
-```{r plots and normality, fig.width=8, fig.height=6, include=TRUE}
+```{r WTAR data, fig.width=8, fig.height=6, include=TRUE}
 ##Summary
 describe(control_df$wtar)
 describe(mtbi_df$wtar)
@@ -98,8 +101,8 @@ wilcox.test(wtar~group)
 #WTAR for both groups shown to be non-normally distributed#
 ```
 
-#2. Mood differences between the groups (depression, anxiety and total symptoms)
-```{r normality HADS, fig.width=8, fig.height=6, include=TRUE}
+# 2. Mood differences between the groups (depression, anxiety and total symptoms)
+```{r HADS data, fig.width=8, fig.height=6, include=TRUE}
 #visualising the data (boxplots)
 par(mfrow = c(1,3))
 boxplot(hads_depression_bl~group, varwidth=TRUE,boxwex= 0.5,main="Depressive Sx's",names=c("control","mTBI"),ylab="Symptom Severity",xlab="Baseline",col=c("light grey","light pink"))
@@ -123,7 +126,6 @@ shapiro.test(hads_total_bl[group=="control"])
 shapiro.test(hads_total_bl[group=="mtbi"])
 
 #all data is non normal
-
 qqnorm(hads_total_bl[group=="control"],main="QQ plot of HADS control data",pch=19)
 qqline(hads_total_bl)
 qqnorm(hads_total_bl[group=="mtbi"],main="QQ plot of HADS mtbi data",pch=19)
@@ -144,8 +146,8 @@ t.test(hads_anxiety_bl~ group, var.equal=TRUE) #even though not normal, ran t-te
 
 #HADS data shown to be non-normally distributed, but parametic analyses are showing sig differences
 ```
-#3. Fatigue differences between the two groups(5 domains, General Fatigue, Mental Fatigue, Physical Fatigue, Reduced Activity and Reduced Motivation)
-``` {r, MFI data, include=TRUE}
+# 3. Fatigue differences between the two groups(5 domains, General Fatigue, Mental Fatigue, Physical Fatigue, Reduced Activity and Reduced Motivation)
+``` {r MFI data, include=TRUE}
 #create df with just MFI data
   MFI_df <- select(COMBINED_COG_PhD, code, group, mfi_gf_bl:mfi_mf_bl)
 par(mfrow=c(1,5))
@@ -185,7 +187,7 @@ var.test(mfi_rm_bl~group) #variances are equal
 t.test(mfi_rm_bl~ group, var.equal=TRUE) # sig difference, mTBI report higher levels of reduced motivation
 ```
 
-#4. Post Concussive Symptom differences between the two groups (RPQ3 (headaches, feelings of dizziness, nausea/vomiting) and RPQ13, total symptom report)
+# 4. Post Concussive Symptom differences between the two groups (RPQ3 (headaches, feelings of dizziness, nausea/vomiting) and RPQ13, total symptom report)
 ```{r PCS data, include=TRUE}
 par(mfrow=c(1,2))
 boxplot(rpq_3_bl~group, varwidth=TRUE,boxwex= 0.5,main="RPQ-3",names=c("control","mTBI"),ylab="Symptom Severity",xlab="Baseline",col=c("light grey","light pink"))
@@ -205,7 +207,9 @@ var.test(rpq_13_bl~group) #variances are equal
 t.test(rpq_13_bl~ group, var.equal=FALSE) # sig difference, mTBI report higher levels of PCS on RPQ_13
 ```
 #5. Views about Health differences between the two groups(7 domains, Role limitations due to physical health, Role limitations due to emotional problems, Energy/fatigue, Emotional well-being,Social functioning, Pain, General health)
-```{r SF-36 Health Q, include=FALSE}
+```{r SF-36 Health Data, include=FALSE}
  SF36_df <- select(COMBINED_COG_PhD, code, group, sf36_pf_bl:sf36_gh_bl)
 
-#to finish off later#
+#to finish off SF-36 code later#
+```
+
