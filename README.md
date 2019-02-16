@@ -15,5 +15,7 @@ Clinial_data.Rmd= Script for visualising, normality testing and running prelimin
 
 Cogntive_data.Rmd = Script for visualising, normality testing and running preliminary analyses on my Cognitive data (Attention, Processing Speed, Memory, Executive Functione etc)
 
-Other files include my early learning/practice with coding.
+There are in the r_scripts folder.
+
+In the poorly named Analysis folder are other files that include my early learning/practice with coding. Plan to fix this up!
 
