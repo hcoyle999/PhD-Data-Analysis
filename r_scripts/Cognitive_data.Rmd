@@ -1,0 +1,179 @@
+---
+title: "Cognitive_data"
+author: "Hannah Coyle"
+email: "hannah.coyle@monash.edu"
+date: "`r Sys.Date()`"
+output: html_document
+---
+# Analysising clinical and cognitive data across three time points in a sample of mild traumatic brain injury (mtbi) patient.s
+
+# Hannah Coyle
+  #This r markdown document and output is for my cognitive data. Includes visualisation, tests of normality and hypothesis testing. 
+
+```{r global_option, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
+                      echo=TRUE, warning=FALSE, message=FALSE, eval=TRUE)
+```
+
+```{r load libraries, include=FALSE}
+library(knitr)
+library(rmarkdown)
+library(psych)
+library(tidyverse)
+library(naniar)
+```
+#1. Trail Making Test A and B (A= Sustained attention, visual scanning, processing speed, B= divided attention, working memory )
+```{r Trails A and B, include=FALSE}
+#decribe and check for missing data
+describe(control_df$tma_bl)
+describe(mtbi_df$tma_bl)
+pct_miss(COMBINED_COG_PhD$tma_bl)
+
+describe(control_df$tmb_bl)
+describe(mtbi_df$tmb_bl)
+pct_miss(COMBINED_COG_PhD$tmb_bl)
+
+#visualise data
+par(mfrow = c(1,2))
+tma_box<-boxplot(tma_bl~group, varwidth=TRUE,boxwex= 0.2,main="TMT A",names=c("control","mTBI"),ylab="Processing Speed (secs)",xlab="Baseline",col=c("light grey","light pink"))
+
+tmb_box<-boxplot(tmb_bl~group, varwidth=TRUE,boxwex= 0.2,main="TMT B",names=c("control","mTBI"),ylab="Processing Speed (secs)",xlab="Baseline",col=c("light grey","light pink"))
+
+#check normality
+shapiro.test(tma_bl[group=="control"])
+shapiro.test(tma_bl[group=="mtbi"])
+
+shapiro.test(tmb_bl[group=="control"])
+shapiro.test(tmb_bl[group=="mtbi"])
+
+#differences between the groups
+var.test(tma_bl~group) #variances are NOT equal
+t.test(tma_bl~ group, var.equal=TRUE) #even though not normal, ran t-test, not significant, but will need to check stats process
+
+var.test(tmb_bl~group) #variances are NOT equal
+t.test(tmb_bl~ group, var.equal=TRUE) #even though not normal, ran t-test, not significant, but will need to check stats process
+```
+#2 Verbal learning and memory (RAVLT)
+```{r RAVLT data, include=FALSE}
+#decribe and check for missing data
+describe(control_df$ravlt_t_bl)
+describe(mtbi_df$ravlt_t_bl)
+pct_miss(COMBINED_COG_PhD$ravlt_t_bl)
+
+describe(control_df$ravlt_t1_bl)
+describe(mtbi_df$ravlt_t1_bl)
+pct_miss(COMBINED_COG_PhD$ravlt_t1_bl)
+
+describe(control_df$ravlt_d_bl)
+describe(mtbi_df$ravlt_d_bl)
+pct_miss(COMBINED_COG_PhD$ravlt_d_bl)
+
+describe(control_df$ravlt_recognition)
+describe(mtbi_df$ravlt_recognition)
+pct_miss(COMBINED_COG_PhD$ravlt_recognition)
+
+#visualise data
+par(mfrow = c(1,4))
+ravlt_t1_box<-boxplot(ravlt_t1_bl~group, varwidth=TRUE,boxwex= 0.2,main="RAVLT trial 1 ",names=c("control","mTBI"),ylab="Verbal Learning",xlab="Baseline",col=c("light grey","light pink"))
+
+ravlt_t_box<-boxplot(ravlt_t_bl~group, varwidth=TRUE,boxwex= 0.2,main="RAVLT total",names=c("control","mTBI"),ylab="Verbal Learning",xlab="Baseline",col=c("light grey","light pink"))
+
+ravlt_d_box<-boxplot(ravlt_d_bl~group, varwidth=TRUE,boxwex= 0.2,main="RAVLT delay",names=c("control","mTBI"),ylab="Verbal Learning",xlab="Baseline",col=c("light grey","light pink"))
+
+ravlt_r_box<-boxplot(ravlt_recognition~group, varwidth=TRUE,boxwex= 0.2,main="RAVLT Recognition",names=c("control","mTBI"),ylab="Verbal Learning",xlab="Baseline",col=c("light grey","light pink"))
+
+#check normality
+shapiro.test(ravlt_t1_bl[group=="control"]) 
+shapiro.test(ravlt_t1_bl[group=="mtbi"]) #data is normally distributed for both groups
+
+shapiro.test(ravlt_t_bl[group=="control"])
+shapiro.test(ravlt_t_bl[group=="mtbi"]) #data not normally distributed
+
+shapiro.test(ravlt_d_bl[group=="control"])
+shapiro.test(ravlt_d_bl[group=="mtbi"]) #data not normally distributed
+
+shapiro.test(ravlt_recognition[group=="control"])
+shapiro.test(ravlt_recognition[group=="mtbi"]) #data normally distributed
+
+#differences between the groups
+var.test(ravlt_t1_bl~group) #variances are equal
+t.test(ravlt_t1_bl~ group, var.equal=TRUE) # normal, significant difference, mTBI encode LESS words on the first trial than controls
+
+var.test(ravlt_t_bl~group) #variances are equal
+t.test(ravlt_t_bl~ group, var.equal=TRUE) #even though not normal, ran t-test, approaching significance (p=0.05184), but will need to check stats process
+
+var.test(ravlt_d_bl~group) #variances are equal
+t.test(ravlt_d_bl~ group, var.equal=TRUE) #even though not normal, ran t-test, not significant
+
+var.test(ravlt_recognition~group) #variances are equal
+t.test(ravlt_recognition~ group, var.equal=TRUE) # normal, ran t-test, approaching sig p =0.05063
+```
+#3. Visual Learning (Breif Visual Memory Test)
+``` {r BVMT data, include=FALSE}
+#decribe and check for missing data
+describe(control_df$bvmt_t1_bl)
+describe(mtbi_df$bvmt_t1_bl)
+pct_miss(COMBINED_COG_PhD$bvmt_t1_bl)
+
+describe(control_df$totalbvmt_bl)
+describe(mtbi_df$totalbvmt_bl)
+pct_miss(COMBINED_COG_PhD$totalbvmt_bl)
+
+#visualise data
+par(mfrow = c(1,2))
+bvmt_t1_box<-boxplot(cog_data_BL$bvmt_t1_bl~group, varwidth=TRUE,boxwex= 0.2,main="BVMT trial 1 ",names=c("control","mTBI"),ylab="Visual Learning",xlab="Baseline",col=c("light grey","light pink"))
+
+ravlt_t_box<-boxplot(totalbvmt_bl~group, varwidth=TRUE,boxwex= 0.2,main="BVMT total",names=c("control","mTBI"),ylab="Visual Learning",xlab="Baseline",col=c("light grey","light pink"))
+```
+#4. WAIS Working Memory Index (DSF, DSB, LNS)
+``` {r WAIS WMI Data, include=FALSE}
+describe(control_df$ds_fwd_bl)
+describe(mtbi_df$ds_fwd_bl)
+pct_miss(COMBINED_COG_PhD$ds_fwd_bl)
+
+describe(control_df$ds_bwd_bl)
+describe(mtbi_df$ds_bwd_bl)
+pct_miss(COMBINED_COG_PhD$ds_bwd_bl)
+
+describe(control_df$ds_total_bl)
+describe(mtbi_df$ds_total_bl)
+pct_miss(COMBINED_COG_PhD$ds_total_bl)
+
+describe(control_df$lns_bl)
+describe(mtbi_df$lns_bl)
+pct_miss(COMBINED_COG_PhD$lns_bl)
+
+
+#visualise data
+par(mfrow = c(1,3))
+dsf_box<-boxplot(ds_fwd_bl~group, varwidth=TRUE,boxwex= 0.2,main="DS Forward ",names=c("control","mTBI"),ylab="Simple Attention",xlab="Baseline",col=c("light grey","light pink"))
+
+dsb_box<-boxplot(cog_data_BL$ds_bwd_bl~group, varwidth=TRUE,boxwex= 0.2,main="DS Backward",names=c("control","mTBI"),ylab="Working Memory",xlab="Baseline",col=c("light grey","light pink"))
+
+ds_total_box<-boxplot(ds_total_bl~group, varwidth=TRUE,boxwex= 0.2,main="DS Total delay",names=c("control","mTBI"),ylab="Processing Capacity",xlab="Baseline",col=c("light grey","light pink"))
+
+par(mfrow = c(1,1))
+lns_box<-boxplot(lns_bl~group, varwidth=TRUE,boxwex= 0.2,main="LNS Total delay",names=c("control","mTBI"),ylab="Processing Capacity",xlab="Baseline",col=c("light grey","light pink"))
+
+#test for normality
+shapiro.test(ds_fwd_bl[group=="control"]) 
+shapiro.test(ds_fwd_bl[group=="mtbi"]) #data is normally distributed for both groups
+
+shapiro.test(cog_data_BL$ds_bwd_bl[group=="control"])
+shapiro.test(cog_data_BL$ds_bwd_bl[group=="mtbi"]) #data is normally distributed for both groups
+
+shapiro.test(ds_total_bl[group=="control"])
+shapiro.test(ds_total_bl[group=="mtbi"]) #data is normally distributed for both groups
+
+#differences between the groups
+var.test(ds_fwd_bl~group) #variances are equal
+t.test(ds_fwd_bl~ group, var.equal=TRUE) # normal, not sig
+
+var.test(cog_data_BL$ds_bwd_bl~group) #variances are equal
+t.test(cog_data_BL$ds_bwd_bl~ group, var.equal=TRUE) #normal, approaching significance p=0.05972
+
+var.test(ds_total_bl~group) #variances are equal
+t.test(ds_total_bl~ group, var.equal=TRUE) # normal, not sig
+```
+#5 WAIS Processing Speed Index (Coding, Symbol Search)
+# to do
