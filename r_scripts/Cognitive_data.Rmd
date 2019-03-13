@@ -21,6 +21,7 @@ library(rmarkdown)
 library(psych)
 library(tidyverse)
 library(naniar)
+library(GGally) #visualising correlations
 ```
 #1. Trail Making Test A and B (A= Sustained attention, visual scanning, processing speed, B= divided attention, working memory )
 ```{r Trails A and B, include=FALSE}
@@ -176,4 +177,54 @@ var.test(ds_total_bl~group) #variances are equal
 t.test(ds_total_bl~ group, var.equal=TRUE) # normal, not sig
 ```
 #5 WAIS Processing Speed Index (Coding, Symbol Search)
-# to do
+``` {r Processing Speed, include=FALSE}
+var.test(cog_data_BL$coding_bl~group) #variances are equal
+t.test(cog_data_BL$coding_bl~ group, var.equal=TRUE) #normal, 
+
+var.test(symbolsearch_bl~group) #variances are equal
+t.test(symbolsearch_bl~ group, var.equal=TRUE) # normal, not sig
+
+```
+#6 Playing around with correlations and plotting
+```{r correlation matrixes, include=TRUE}
+ggcorr(cog_data_BL, label = TRUE, label_alpha = TRUE)
+
+qplot(cog_data_BL$coding_bl, cog_data_BL$symbolsearch_bl,
+      geom = c("point","smooth"),
+      method= "lm",
+      alpha = I(1/5),
+      se=FALSE)
+
+#create a matrix that shows the correlation coefficient of multiple variables in conjunction with a scatterplot (including a line of best fit with a confidence interval) and a density plot
+ggpairs(cog_data_BL, 
+        columns = c("coding_bl", "symbolsearch_bl", "ds_fwd_bl"), 
+        upper = list(continuous = wrap("cor", 
+                                       size = 10)), 
+        lower = list(continuous = "smooth"))
+```
+
+```{r playing with interactive plots, include=TRUE}
+
+library(plotly)
+
+
+p <- COMBINED_COG_PhD %>%
+  ggplot(aes(coding_bl,symbolsearch_bl,colour= group,label= code)) +
+  geom_point () +
+  geom_smooth()
+
+ggplotly(p)
+#interactive scatterplot of coding and symbol search performance across both groups
+
+q <- mtbi_df %>%
+  ggplot(aes(coding_bl, education, label=code)) +
+  geom_point()
+
+ggplotly(q)
+
+#interactive scatterplot of coding and education. 
+
+plot_ly(COMBINED_COG_PhD, x= ~coding_bl, y)
+
+```
+

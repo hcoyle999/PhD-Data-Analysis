@@ -51,23 +51,62 @@ lut_1 <- c ("1" = "female", "2" = "male")
 COMBINED_COG_PhD$group <- lut[COMBINED_COG_PhD$group]
 COMBINED_COG_PhD$sex <- lut_1[COMBINED_COG_PhD$sex]
 
+lut2 <-c ("1" = "yes", "2" = "no")
+lut3 <-c("1"= "retrograde", "2"="anterograde", "3"= "retrograde and anterograde", "4"= "nil", "5"="NA" )
 #tidying up variable names
 names(COMBINED_COG_PhD) <- tolower(names(COMBINED_COG_PhD))
-
-#attach to database
-attach(COMBINED_COG_PhD)
 
 #create dataframes for two groups
 control_df <- filter(COMBINED_COG_PhD,group == "control")
 mtbi_df <- filter(COMBINED_COG_PhD,group == "mtbi")
 
+#change levels of amnesia to labels
+mtbi_df$headinjury_hx <- lut2[mtbi_df$headinjury_hx]
+mtbi_df$loc <- lut2[mtbi_df$loc]
+mtbi_df$amnesia <- lut3[mtbi_df$amnesia]
+
+#change variable names trials
+colnames(COMBINED_COG_PhD)[colnames(COMBINED_COG_PhD) == 'trial1_bl'] <- 'bvmt_t1_bl'
+colnames(COMBINED_COG_PhD)[colnames(COMBINED_COG_PhD) == 'trial2_bl'] <- 'bvmt_t2_bl'
+colnames(COMBINED_COG_PhD)[colnames(COMBINED_COG_PhD) == 'trial3_bl'] <- 'bvmt_t3_bl'
+
+colnames(COMBINED_COG_PhD)[colnames(COMBINED_COG_PhD) == 'ss_fwd_bl'] <- 'ds_fwd_bl'
+colnames(COMBINED_COG_PhD)[colnames(COMBINED_COG_PhD) == 'ss_bck_bl'] <- 'ds_bwd_bl'
+colnames(COMBINED_COG_PhD)[colnames(COMBINED_COG_PhD) == 'ss_total_bl'] <- 'ds_total_bl'
+colnames(COMBINED_COG_PhD)[colnames(COMBINED_COG_PhD) == 'intials'] <- 'initals'
+colnames(COMBINED_COG_PhD)[colnames(COMBINED_COG_PhD) == 'rpq_10_mtbi'] <- 'rpq_10_mtbi_t1'
+
+#attach to database
+attach(COMBINED_COG_PhD)
+
 # clinical data at baseline
 clin_data_BL <- select(COMBINED_COG_PhD,code, group, hads_anxiety_bl:mfi_mf_bl) 
 # cog data at baseline
 cog_data_BL <- select(COMBINED_COG_PhD,code, group, wtar:bvmt_recognition)
+
+#exclude participants and create a new dataset
+COMBINED_COG_PhD_clean <-subset(COMBINED_COG_PhD,!code %in% c(7, 16))
+
+##need to create a data set that is cleaned so I don't need to do this step repeatedly, can save as r.data ## 
 ```
+
 ## Descriptives, visualisation, normality and hypothesis testing 
-# 1. WTAR Clinical data (measure of premorbid intelligence)
+# 1. Differences between the groups (age, education etc)
+```{r group differences, include= FALSE}
+describe(control_df$age)
+describe(mtbi_df$age)
+
+shapiro.test(age[group=="control"])
+shapiro.test(age[group=="mtbi"])
+
+var.test(age~group)
+t.test(age~ group, var.equal=TRUE) #parametric
+wilcox.test(age~group) #non parametric
+#this step is also done as part of table 1
+```
+
+
+#2 . WTAR Clinical data (measure of premorbid intelligence)
 ```{r WTAR data, fig.width=8, fig.height=6, include=TRUE}
 ##Summary
 describe(control_df$wtar)
@@ -96,6 +135,7 @@ shapiro.test(wtar[group=="mtbi"])
 
 #wilcoxon rank test (non parametric equivalent of t-test)
 wilcox.test(wtar~group)
+t.test(wtar~ group, var.equal=TRUE)
 #this is not working- issue to do with ties?
 
 #WTAR for both groups shown to be non-normally distributed#
@@ -137,6 +177,8 @@ var.test(hads_total_bl~group) #variances are NOT equal
 t.test(hads_total_bl~ group, var.equal=FALSE) #even though not normal, ran t-test, significant, but will need to check stats process
 
 #hypothesis testing- dep sx severity
+describe(control_df$hads_depression_bl)
+describe(mtbi_df$hads_depression_bl)
 var.test(hads_depression_bl~group) #variances are NOT equal
 t.test(hads_depression_bl~ group, var.equal=TRUE) #even though not normal, ran t-test, significant, but will need to check stats process
 

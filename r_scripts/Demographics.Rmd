@@ -19,6 +19,8 @@ knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
 
 # 2.Create demographics table for both groups
 ```{r Demographics table, include=FALSE}
+# resource on table 1
+# https://cran.r-project.org/web/packages/tableone/vignettes/introduction.html
 library(tableone)
 #change categorical variables to factors
 myVars <- c("sex", "age", "education", "wtar")
@@ -39,7 +41,116 @@ tab1$ContTable
 #export into .csv/ excel and save table 
 library(xlsx)
 tab1Mat<- print(tab1, exact="stage", quote=TRUE, nospaces=TRUE,printToggle = FALSE)
-write.csv(tab1Mat, file="demographics.csv")
+write.csv(tab1Mat, file="/Users/han.coyle/Documents/PHD-Data-Analysis/PHD-Data-Analysis/Analysis/Tables/demographics.csv")
 
 ```
-#3.Create summary table for clinical characteristics (mtbi sample)
+#3.Create summary table for clinical data (control and mtbi sample)
+```{r Clinical data table, include=FALSE}
+#change categorical variables to factors
+myVars_1 <- c(names(clin_data_BL))
+myVars_1 <- myVars_1[-(1:2)] #remove code and group
+catVars_1 <- c("group")
+
+#create table by group
+clin_tab_1 <- CreateTableOne(vars = myVars_1, strata = "group" , data = COMBINED_COG_PhD, factorVars = catVars_1)
+print(clin_tab_1)
+
+#see a summary of data (look for skew, kurtosis etc)
+summary(clin_tab_1)
+
+#create variable with non normal data (can input variable names and sub this in, but currently working on the premise that will run non parametric stats for all)
+  #clin_non_normal <- c("hads_total_bl")
+
+#if you want to specify nonnormal data you can do that as well (quote arguments avoids the mishandling of spaces)
+  #currently including all variables as nonnormal (BUT haven't checked that these aren't yet)
+print(clin_tab_1, nonnormal= myVars_1, quote= TRUE)
+
+#export into .csv/ excel and save table 
+clin_data_mat<- print(clin_tab_1, exact="stage", quote=TRUE, nospaces=TRUE,printToggle = FALSE)
+write.csv(clin_data_mat, file="/Users/han.coyle/Documents/PHD-Data-Analysis/PHD-Data-Analysis/Analysis/Tables/clin_demographics.csv")
+```
+#4.Create summary table for injury characteristics data ( mtbi sample)
+```{r mTBi injury data table, include=FALSE}
+
+#create injury table
+mTBI_injury <- select(mtbi_df, code, headinjury_hx, gcs, loc, loc_dur, amnesia, prior_injury,other_injury,ageofinjury)
+
+#resource for working with labelled data
+#https://cran.r-project.org/web/packages/sjlabelled/vignettes/labelleddata.html
+
+#barplot of amnesia counts
+counts <- table(mTBI_injury$amnesia)
+barplot(counts, main="Amensia",  xlab="Type of Amnesia")
+barplot(counts, main="Amensia", 
+xlab="Type of Amnesia")
+
+#create table
+myVars_2 <- c(names(mTBI_injury))
+myVars_2 <- myVars_2[-(1:1)] #remove code
+catVars_2 <- c("loc","amnesia")
+
+mtbi_injury_tab_1 <- CreateTableOne(vars = myVars_2, data = COMBINED_COG_PhD, factorVars = catVars_2)
+print(mtbi_injury_tab_1)
+
+#not sure if this is right and also need to update some of the data in the SPSS database- to come back to. 
+```
+
+#Understand more about mTBI sample
+```{r mtbi sample characteristics, include=TRUE}
+#create mtbi table with PCS variable
+mtbi_pcs<- mtbi_df %>%
+  select(code, initals, amnesia, rpq_3_bl, rpq_13_bl, rpq_10_mtbi_t1,rpq_mtbi_t2 ) %>%
+  mutate(pcs_bl = rpq_3_bl>=1, pcs_t1 = rpq_10_mtbi_t1>=1, pcs_t2 =rpq_mtbi_t2 >=1)
+  
+#change logicals to characters
+mtbi_pcs$pcs_bl <- ifelse(mtbi_pcs$pcs_bl == TRUE, "yes", "no")
+mtbi_pcs$pcs_t1 <- ifelse(mtbi_pcs$pcs_t1 == TRUE, "yes", "no")
+mtbi_pcs$pcs_t2 <- ifelse(mtbi_pcs$pcs_t2 == TRUE, "yes", "no") 
+
+#look at amnesia
+mtbi_df %>%
+  select(code, amnesia, rpq_3_bl, rpq_13_bl) %>%
+  plot(rpq_3_bl,rpq_13_bl)
+
+#visualisation of relationship between gcs, PCS symptom severity and LOC
+p<- ggplot(mtbi_df, aes(x=gcs, y=rpq_13_bl, color=loc))
+p + geom_jitter(alpha=0.3) + scale_color_manual(breaks = c('yes','no'),values=c('darkgreen','red'))
+
+#visualisation of relationship between amnesia and PCS symptom severity 
+q<- ggplot(mtbi_df, aes(x=gcs, y=rpq_13_bl, color=amnesia))
+
+q + geom_jitter(alpha=0.3) + scale_color_manual(breaks = c('antegrade','retrograde','anterograde and retrograde','nil'),values=c('darkgreen','red','blue','orange'))
+
+# linear model (i.e. how to do a correlation between a nominal (unordered categorical variable) iv and continuous dv)
+mtbi_df %>%
+select(code, rpq_13_bl,amnesia) %>%
+count(amnesia)
+
+
+model.lm <- lm(rpq_13_bl ~ amnesia, mtbi_df)
+summary(model.lm)
+
+#interpret the estimated intercept as giving the mean symptom severity of PCS symptoms as 13.85 for ?? *unclear which variable*, and the estimated coefficients for the dummy variables as showing retrograde amnesia symptoms were on average 0.75 points less severe then ?
+
+#one-way ANOVA
+model.aov <- aov(rpq_13_bl ~ amnesia, data = mtbi_df)
+summary(model.aov)
+#gives a summary with identical F stat and p=value
+
+#chi-squared test (for two sets of categorical data)
+chisq.test(mtbi_df$loc,mtbi_pcs$pcs_bl, correct = FALSE) # is there a relationship between loc (yes vs no) and presence of pcs (yes vs no)
+
+chisq.test(mtbi_df$loc,mtbi_df$amnesia, correct = FALSE) #almost significant
+
+#if significant this is a measure of association, NOT causality, can go on to test strength of association
+#https://www.r-bloggers.com/to-eat-or-not-to-eat-thats-the-question-measuring-the-association-between-categorical-variables/
+
+library(GoodmanKruskal)
+varset1<- c("loc","amnesia")
+loc_amn_Frame1<- subset(mtbi_df, select = varset1)
+GKmatrix1<- GKtauDataframe(loc_amn_Frame1)
+plot(GKmatrix1, corrColors = "blue")
+```
+
+
+
