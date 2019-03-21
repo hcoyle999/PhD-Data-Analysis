@@ -12,7 +12,7 @@ output: html_document
 
 ```{r global_option, include=FALSE}
 knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
-                      echo=TRUE, warning=FALSE, message=FALSE, eval=TRUE)
+                      echo=TRUE, warning=FALSE, message=FALSE, eval=TRUE, root.dir = '../..')
 #notes to self 
   #when knitting rmarkdown files, all objects that are called need to have been created in this workspace
   # [https://rmarkdown.rstudio.com/lesson-8.html] is a good resource on all things markdown
@@ -27,68 +27,21 @@ library(rmarkdown)
 library(psych)
 library(tidyverse)
 library(naniar)
-#formatting data for analysis
-normality_testing <-"/Users/han.coyle/Documents/PHD-Data-Analysis/PHD-Data-Analysis/r_scripts/Normality_testing.Rmd"
 ```
 
-```{r get raw SPSS data, include=FALSE}
-## Opening my SPPS database and converting to R file
-#set wd
-rawdata<-"/Users/han.coyle/Documents/PHD-Data-Analysis/PHD-Data-Analysis/COMBINED_COG_PhD.sav"
-## the following is to ensure that the SPSS data is loaded correctly so you can see variable labels and value labels 
-#load database as a list
-COMBINED_COG_PhD<-haven::read_spss(rawdata,user_na=FALSE)
-save(COMBINED_COG_PhD,file="~/Documents/PHD-Data-Analysis/PHD-Data-Analysis/COMBINED_COG_PhD.Rdata")
-```
+```{r get my saved data frame, include=FALSE}
+## Open my R data file and create nec dataframes (this is step 1 if working off a clear workspace)
+load("~/Documents/PHD-Data-Analysis/PHD-Data-Analysis/Analysis/Data/COMBINED_COG_PhD.Rdata")
 
-```{r data cleaning, include= FALSE}
-## Initial data cleaning steps
-#create a look up table to convert numeric codes into meaninful strings
-lut <-c ("1" = "control", "2" = "mtbi")
-lut_1 <- c ("1" = "female", "2" = "male")
+control_df <- filter(COMBINED_COG_PhD,group == "control") #control_df
+mtbi_df <- filter(COMBINED_COG_PhD,group == "mtbi") #mtbi_df
+clin_data_BL <- select(COMBINED_COG_PhD,code, group, hads_anxiety_bl:mfi_mf_bl) # clinical_df at baseline
+cog_data_BL <- select(COMBINED_COG_PhD,code, group, wtar:bvmt_recognition) # cog_df at baseline
 
-#combine/use this to relabel 1 and 2's to control and mtbi- add to df
-COMBINED_COG_PhD$group <- lut[COMBINED_COG_PhD$group]
-COMBINED_COG_PhD$sex <- lut_1[COMBINED_COG_PhD$sex]
-
-lut2 <-c ("1" = "yes", "2" = "no")
-lut3 <-c("1"= "retrograde", "2"="anterograde", "3"= "retrograde and anterograde", "4"= "nil", "5"="NA" )
-#tidying up variable names
-names(COMBINED_COG_PhD) <- tolower(names(COMBINED_COG_PhD))
-
-#create dataframes for two groups
-control_df <- filter(COMBINED_COG_PhD,group == "control")
-mtbi_df <- filter(COMBINED_COG_PhD,group == "mtbi")
-
-#change levels of amnesia to labels
-mtbi_df$headinjury_hx <- lut2[mtbi_df$headinjury_hx]
-mtbi_df$loc <- lut2[mtbi_df$loc]
-mtbi_df$amnesia <- lut3[mtbi_df$amnesia]
-
-#change variable names trials
-colnames(COMBINED_COG_PhD)[colnames(COMBINED_COG_PhD) == 'trial1_bl'] <- 'bvmt_t1_bl'
-colnames(COMBINED_COG_PhD)[colnames(COMBINED_COG_PhD) == 'trial2_bl'] <- 'bvmt_t2_bl'
-colnames(COMBINED_COG_PhD)[colnames(COMBINED_COG_PhD) == 'trial3_bl'] <- 'bvmt_t3_bl'
-
-colnames(COMBINED_COG_PhD)[colnames(COMBINED_COG_PhD) == 'ss_fwd_bl'] <- 'ds_fwd_bl'
-colnames(COMBINED_COG_PhD)[colnames(COMBINED_COG_PhD) == 'ss_bck_bl'] <- 'ds_bwd_bl'
-colnames(COMBINED_COG_PhD)[colnames(COMBINED_COG_PhD) == 'ss_total_bl'] <- 'ds_total_bl'
-colnames(COMBINED_COG_PhD)[colnames(COMBINED_COG_PhD) == 'intials'] <- 'initals'
-colnames(COMBINED_COG_PhD)[colnames(COMBINED_COG_PhD) == 'rpq_10_mtbi'] <- 'rpq_10_mtbi_t1'
-
-#attach to database
-attach(COMBINED_COG_PhD)
-
-# clinical data at baseline
-clin_data_BL <- select(COMBINED_COG_PhD,code, group, hads_anxiety_bl:mfi_mf_bl) 
-# cog data at baseline
-cog_data_BL <- select(COMBINED_COG_PhD,code, group, wtar:bvmt_recognition)
-
-#exclude participants and create a new dataset
+#exclude participants
 COMBINED_COG_PhD_clean <-subset(COMBINED_COG_PhD,!code %in% c(7, 16))
-
-##need to create a data set that is cleaned so I don't need to do this step repeatedly, can save as r.data ## 
 ```
+
 
 ## Descriptives, visualisation, normality and hypothesis testing 
 # 1. Differences between the groups (age, education etc)
@@ -98,7 +51,6 @@ describe(mtbi_df$age)
 
 shapiro.test(age[group=="control"])
 shapiro.test(age[group=="mtbi"])
-
 var.test(age~group)
 t.test(age~ group, var.equal=TRUE) #parametric
 wilcox.test(age~group) #non parametric

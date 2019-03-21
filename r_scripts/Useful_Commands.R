@@ -1,5 +1,14 @@
 #Useful functions
+  # for getting set up/navigating file directories
 
+getwd()        # return your current wd
+setwd(dir)     # set your wd (e.g "Users/han.coyle/Documents/PHD-Data-Analysis"
+list.files()   # list of all files in that directors
+path.expand("~") # tells you what your home directory is
+file.choose()  # if you forget where a file is and want to browse for it and then print out
+                # full path name 
+
+  # for looking at raw data
 length(object) # number of elements or components
 str(object)    # structure of an object 
 class(object)  # class or type of an object
@@ -20,6 +29,10 @@ fix(object)               # edit in place
 
 # list objects in the working environment
 ls()
+
+# prints to console summary of all variables in workspace
+library(lsr)
+who()
 
 # list the variables in mydata
 names(mydata)
@@ -55,3 +68,6 @@ group_by() %>%
 
 #also a handy hint is use of dput for turning outcome of function into an expression you can use in your code snippet- for example
 dput(names(COMBINED_COG_PhD[,1:3])) #for variable names as part of df
+
+#changing column names in df
+names(df)[names(df) == 'old.var.name'] <- 'new.var.name'

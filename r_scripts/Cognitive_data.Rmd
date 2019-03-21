@@ -9,7 +9,6 @@ output: html_document
 
 # Hannah Coyle
   #This r markdown document and output is for my cognitive data. Includes visualisation, tests of normality and hypothesis testing. 
-
 ```{r global_option, include=FALSE}
 knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
                       echo=TRUE, warning=FALSE, message=FALSE, eval=TRUE)

@@ -15,6 +15,18 @@ knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
                       echo=TRUE, warning=FALSE, message=FALSE, eval=TRUE)
 ```
 
+```{r get my saved data frame, include=FALSE}
+## Open my R data file and select dataframes and save (this is step 1 if working off a clear workspace)
+load("~/Documents/PHD-Data-Analysis/PHD-Data-Analysis/Analysis/Data/COMBINED_COG_PhD.Rdata")
+
+control_df <- filter(COMBINED_COG_PhD,group == "control") #control_df
+mtbi_df <- filter(COMBINED_COG_PhD,group == "mtbi") #mtbi_df
+clin_data_BL <- select(COMBINED_COG_PhD,code, group, hads_anxiety_bl:mfi_mf_bl) # clinical_df at baseline
+cog_data_BL <- select(COMBINED_COG_PhD,code, group, wtar:bvmt_recognition) # cog_df at baseline
+
+#exclude participants
+COMBINED_COG_PhD <-subset(COMBINED_COG_PhD,!code %in% c(7, 16))
+```
 # 1.Run normality tests on demographic information (to do)
 
 # 2.Create demographics table for both groups
