@@ -71,3 +71,16 @@ dput(names(COMBINED_COG_PhD[,1:3])) #for variable names as part of df
 
 #changing column names in df
 names(df)[names(df) == 'old.var.name'] <- 'new.var.name'
+
+#When using the pipe, the object being passed by the expression on the left side of the pipe
+#can be accessed via .
+df %>% .$average
+
+#The recode function is a related useful function for dealing with factor names
+x <- seq(-5, 5)
+recode(sign(x), "1" = "positive", "0" = "zero", "-1" = "nonpositive")
+
+#plotting two graphs next to each other
+library(gridExtra)
+#create graphs e.g. p<- ....graph  q<- ....graph
+grid.arrange(p,q, ncol=2)

@@ -124,6 +124,9 @@ par(mfrow = c(1,2))
 bvmt_t1_box<-boxplot(cog_data_BL$bvmt_t1_bl~group, varwidth=TRUE,boxwex= 0.2,main="BVMT trial 1 ",names=c("control","mTBI"),ylab="Visual Learning",xlab="Baseline",col=c("light grey","light pink"))
 
 ravlt_t_box<-boxplot(totalbvmt_bl~group, varwidth=TRUE,boxwex= 0.2,main="BVMT total",names=c("control","mTBI"),ylab="Visual Learning",xlab="Baseline",col=c("light grey","light pink"))
+
+
+
 ```
 #4. WAIS Working Memory Index (DSF, DSB, LNS)
 ``` {r WAIS WMI Data, include=FALSE}
@@ -144,7 +147,7 @@ describe(mtbi_df$lns_bl)
 pct_miss(COMBINED_COG_PhD$lns_bl)
 
 
-#visualise data
+#visualise data (the long and complicated way ;| !) 
 par(mfrow = c(1,3))
 dsf_box<-boxplot(ds_fwd_bl~group, varwidth=TRUE,boxwex= 0.2,main="DS Forward ",names=c("control","mTBI"),ylab="Simple Attention",xlab="Baseline",col=c("light grey","light pink"))
 
@@ -154,6 +157,27 @@ ds_total_box<-boxplot(ds_total_bl~group, varwidth=TRUE,boxwex= 0.2,main="DS Tota
 
 par(mfrow = c(1,1))
 lns_box<-boxplot(lns_bl~group, varwidth=TRUE,boxwex= 0.2,main="LNS Total delay",names=c("control","mTBI"),ylab="Processing Capacity",xlab="Baseline",col=c("light grey","light pink"))
+
+#visualise data (the cleverer way !!)
+#section of code to look at digit span longitudianlly in controls
+COMBINED_COG_PhD_clean %>%
+  filter(group== "control") %>%
+  select(ds_bwd_bl, ss_bck_t1, ss_bck_t2) %>%
+  gather(key="timepoint", value= "DSB", na.rm=FALSE) %>%
+  mutate(timepoint= as.factor(timepoint)) %>%
+  #t.test(timepoint, DSB, var.equal=TRUE)
+  ggplot(aes(x=timepoint,y = DSB)) + geom_boxplot()
+
+#section of code to look at digit span longitudinally in both groups 
+digit_span_longitudinally<- COMBINED_COG_PhD_clean %>%
+  group_by(group) %>%
+  select(ds_bwd_bl, ss_bck_t1, ss_bck_t2) %>%
+  gather(key="timepoint", value= "DSB",
+         ds_bwd_bl, ss_bck_t1, ss_bck_t2, na.rm=FALSE) %>%
+  mutate(timepoint= as.factor(timepoint)) %>%
+  #t.test(timepoint, DSB, var.equal=TRUE)
+  ggplot(aes(x=timepoint,y = DSB, fill=group)) + geom_boxplot()
+
 
 #test for normality
 shapiro.test(ds_fwd_bl[group=="control"]) 
@@ -176,7 +200,17 @@ var.test(ds_total_bl~group) #variances are equal
 t.test(ds_total_bl~ group, var.equal=TRUE) # normal, not sig
 ```
 #5 WAIS Processing Speed Index (Coding, Symbol Search)
-``` {r Processing Speed, include=FALSE}
+``` {r Processing Speed, include=TRUE}
+COMBINED_COG_PhD_clean %>%
+  group_by(group) %>%
+  select(coding_bl, coding_t1, coding_t2) %>%
+  gather(key="timepoint", value= "coding",
+         coding_bl, coding_t1, coding_t2, na.rm=FALSE) %>%
+  mutate(timepoint= as.factor(timepoint)) %>%
+  #t.test(timepoint, DSB, var.equal=TRUE)
+  ggplot(aes(x=timepoint,y = coding, fill=group)) + geom_boxplot()
+
+
 var.test(cog_data_BL$coding_bl~group) #variances are equal
 t.test(cog_data_BL$coding_bl~ group, var.equal=TRUE) #normal, 
 
@@ -224,6 +258,24 @@ ggplotly(q)
 #interactive scatterplot of coding and education. 
 
 plot_ly(COMBINED_COG_PhD, x= ~coding_bl, y)
+
+COMBINED_COG_PhD_clean %>%
+  group_by(group) %>%
+  select() %>%
+  gather(key="timepoint", value= "Verbal Fluency", cowat_bl, cowat_t1, cowat_t2, na.rm=FALSE) %>%
+  mutate(timepoint= as.factor(timepoint)) %>%
+  #t.test(timepoint, DSB, var.equal=TRUE)
+  ggplot(aes(x=timepoint,y = "Verbal Fluency", fill=group)) + geom_boxplot()
+
+COMBINED_COG_PhD_clean %>%
+  group_by(group) %>%
+  select(cowat_bl, cowat_t1, cowat_t2) %>%
+  gather(key="timepoint", value= "verbal_fluency",
+         cowat_bl, cowat_t1, cowat_t2, na.rm=FALSE) %>%
+  mutate(timepoint= as.factor(timepoint)) %>%
+  #t.test(timepoint, DSB, var.equal=TRUE)
+  ggplot(aes(x=timepoint,y = "verbal_fluency", fill=group)) + geom_line()
+
 
 ```
 
