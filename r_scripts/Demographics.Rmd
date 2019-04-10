@@ -19,20 +19,21 @@ knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
 ## Open my R data file and select dataframes and save (this is step 1 if working off a clear workspace)
 load("~/Documents/PHD-Data-Analysis/PHD-Data-Analysis/Analysis/Data/COMBINED_COG_PhD.Rdata")
 
-control_df <- filter(COMBINED_COG_PhD,group == "control") #control_df
-mtbi_df <- filter(COMBINED_COG_PhD,group == "mtbi") #mtbi_df
-clin_data_BL <- select(COMBINED_COG_PhD,code, group, hads_anxiety_bl:mfi_mf_bl) # clinical_df at baseline
-cog_data_BL <- select(COMBINED_COG_PhD,code, group, wtar:bvmt_recognition) # cog_df at baseline
+# control_df <- filter(COMBINED_COG_PhD,group == "control") #control_df
+# mtbi_df <- filter(COMBINED_COG_PhD,group == "mtbi") #mtbi_df
+# clin_data_BL <- select(COMBINED_COG_PhD,code, group, hads_anxiety_bl:mfi_mf_bl) # clinical_df at baseline
+# cog_data_BL <- select(COMBINED_COG_PhD,code, group, wtar:bvmt_recognition) # cog_df at baseline
 
 #exclude participants
 COMBINED_COG_PhD <-subset(COMBINED_COG_PhD,!code %in% c(7, 16))
 ```
 # 1.Run normality tests on demographic information (to do)
+```{r Normality tests, include=FALSE}
 
+```
 # 2.Create demographics table for both groups
 ```{r Demographics table, include=FALSE}
-# resource on table 1
-# https://cran.r-project.org/web/packages/tableone/vignettes/introduction.html
+
 library(tableone)
 #change categorical variables to factors
 myVars <- c("sex", "age", "education", "wtar")
@@ -54,6 +55,15 @@ tab1$ContTable
 library(xlsx)
 tab1Mat<- print(tab1, exact="stage", quote=TRUE, nospaces=TRUE,printToggle = FALSE)
 write.csv(tab1Mat, file="/Users/han.coyle/Documents/PHD-Data-Analysis/PHD-Data-Analysis/Analysis/Tables/demographics.csv")
+#the above step is because stargazer can't deal with the data in "table 1" format
+dem_table<-read_csv(file="~/Documents/PHD-Data-Analysis/PHD-Data-Analysis/Analysis/Tables/demographics.csv")
+dem_table<-as.data.frame(dem_table) #stargazer does not work well wth tbl_df so change to data frame
+
+#create stargazer output and save as html
+stargazer(dem_table, title= "Demographic information", summary = FALSE, out="~/Documents/PHD-Data-Analysis/PHD-Data-Analysis/Analysis/Tables/demographics.html")
+
+
+
 
 ```
 #3.Create summary table for clinical data (control and mtbi sample)
@@ -80,15 +90,92 @@ print(clin_tab_1, nonnormal= myVars_1, quote= TRUE)
 #export into .csv/ excel and save table 
 clin_data_mat<- print(clin_tab_1, exact="stage", quote=TRUE, nospaces=TRUE,printToggle = FALSE)
 write.csv(clin_data_mat, file="/Users/han.coyle/Documents/PHD-Data-Analysis/PHD-Data-Analysis/Analysis/Tables/clin_demographics.csv")
+
+#example of a quick way of summmarising data
+COMBINED_COG_PhD %>%
+  group_by(group) %>%
+  summarise(mean= mean(age, na.rm=TRUE), sd= sd(age), n=n()) 
+  
+
+
 ```
-#4.Create summary table for injury characteristics data ( mtbi sample)
-```{r mTBi injury data table, include=FALSE}
+#4.Lood at injury characteristics in data ( mtbi sample)
+```{r injury characteristics, include=FALSE}
+#mean time since injury for each session 
+#baseline
+dys_pst_injury_bl<-COMBINED_COG_PhD %>%
+ filter(group=="mtbi") %>%
+  select(dateofinjury, baseline, t1, t2) %>%
+  mutate(diff = c(difftime(baseline, dateofinjury))) %>%
+  mutate(diff= as.numeric(diff))
 
-#create injury table
-mTBI_injury <- select(mtbi_df, code, headinjury_hx, gcs, loc, loc_dur, amnesia, prior_injury,other_injury,ageofinjury)
+#calc sum stats
+dys_pst_injury%>%
+  summarise(mean= mean(diff, na.rm=TRUE), sd= sd(diff,na.rm=TRUE), n=n())
 
-#resource for working with labelled data
-#https://cran.r-project.org/web/packages/sjlabelled/vignettes/labelleddata.html
+#  calc range ( can't calculate in pipe for some reason)
+range(dys_pst_injury$diff,na.rm=TRUE)
+
+#timepoint 1
+dys_pst_injury_t1<-COMBINED_COG_PhD %>%
+ filter(group=="mtbi") %>%
+  select(dateofinjury, baseline, t1, t2) %>%
+  mutate(diff = c(difftime(t1, dateofinjury))) %>%
+  mutate(diff= as.numeric(diff))
+
+#calc sum stats
+dys_pst_injury_t1%>%
+  summarise(mean= mean(diff, na.rm=TRUE), sd= sd(diff,na.rm=TRUE), n=n())
+
+#  calc range ( can't calculate in pipe for some reason)
+range(dys_pst_injury_t1$diff,na.rm=TRUE)
+
+#timepoint 2 
+dys_pst_injury_t2<-COMBINED_COG_PhD %>%
+ filter(group=="mtbi") %>%
+  select(dateofinjury, baseline, t1, t2) %>%
+  mutate(diff = c(difftime(t2, dateofinjury))) %>%
+  mutate(diff= as.numeric(diff))
+
+#calc sum stats
+dys_pst_injury_t2%>%
+  summarise(mean= mean(diff, na.rm=TRUE), sd= sd(diff,na.rm=TRUE), n=n())
+
+#  calc range ( can't calculate in pipe for some reason) - to fix 111 T2 date in SPSS
+range(dys_pst_injury_t2$diff,na.rm=TRUE)
+
+#not sure what this is- linear model of age and education??
+fit <- lm(age ~ education, data= COMBINED_COG_PhD)
+summary(fit)
+par(mfrow = c(2, 2))
+plot(fit) 
+ #-----------------------------------
+# calculate number individuals who had loc
+COMBINED_COG_PhD %>%
+  filter(group=="mtbi") %>%
+  select(code, headinjury_hx, gcs, loc, loc_dur, amnesia, prior_injury,other_injury,ageofinjury) %>%
+  mutate(loc= as.factor(loc)) %>%
+  count(loc=="yes") # currently 13/30 loc yes, 12/30 loc no, 5/30 NA (check if this is unsure)
+
+#percentages
+  (12/30*100)
+  (13/30*100)
+  (5/30*100)
+# mean and sd loc
+describe(loc_dur)
+
+#type of injury - ordered by factor of frequence
+ COMBINED_COG_PhD %>%
+  filter(group=="mtbi") %>%
+  select(code, injury_class) %>%
+  mutate(injury_class= as.factor(injury_class)) %>%
+  ggplot(aes(fct_infreq(injury_class))) +
+  geom_histogram(stat="count") + # can change fill colours
+   theme_classic() +
+   labs(x= "Injury Mechanism", y= "Frequency", title = "mTBI injury characteristics")+
+ theme(plot.title = element_text(hjust = 0.5),plot.subtitle = element_text(hjust = 0.5))
+
+ 
 
 #barplot of amnesia counts
 counts <- table(mTBI_injury$amnesia)
@@ -105,6 +192,10 @@ mtbi_injury_tab_1 <- CreateTableOne(vars = myVars_2, data = COMBINED_COG_PhD, fa
 print(mtbi_injury_tab_1)
 
 #not sure if this is right and also need to update some of the data in the SPSS database- to come back to. 
+```
+
+```{r}
+
 ```
 
 #Understand more about mTBI sample

@@ -37,10 +37,10 @@ library(naniar)
 load("~/Documents/PHD-Data-Analysis/PHD-Data-Analysis/Analysis/Data/COMBINED_COG_PhD.Rdata")
 
 # don't think I need this section anymore as can use the filter() and select()functions
-# control_df <- filter(COMBINED_COG_PhD,group == "control") #control_df
-# mtbi_df <- filter(COMBINED_COG_PhD,group == "mtbi") #mtbi_df
+control_df <- filter(COMBINED_COG_PhD,group == "control") #control_df
+mtbi_df <- filter(COMBINED_COG_PhD,group == "mtbi") #mtbi_df
 # clin_data_BL <- select(COMBINED_COG_PhD,code, group, hads_anxiety_bl:mfi_mf_bl) # clinical_df at baseline
-# cog_data_BL <- select(COMBINED_COG_PhD,code, group, wtar:bvmt_recognition) # cog_df at baseline
+cog_data_BL <- select(COMBINED_COG_PhD, group, wtar:bvmt_recognition) # cog_df at baseline
 
 #exclude participants
 COMBINED_COG_PhD <-subset(COMBINED_COG_PhD,!code %in% c(7, 16))
@@ -50,8 +50,12 @@ COMBINED_COG_PhD <-subset(COMBINED_COG_PhD,!code %in% c(7, 16))
 ## Descriptives, visualisation, normality and hypothesis testing 
 # 1. Differences between the groups (age, education etc)
 ```{r group differences, echo=FALSE}
+# to obtain all summary statistics
+ 
+  map_dbl(control_df, mean, na.rm=TRUE)
+  
+describeBy(cog_data_BL, group, mat = TRUE) 
 
-describe(control_df_dem)
   
 describe(control_df$age)
 describe(mtbi_df$age)
