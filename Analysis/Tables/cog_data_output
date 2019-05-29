@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<script src="lib301d3fe5a162/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="lib301d3fe5a162/bootstrap-3.3.5/css/simplex.min.css" rel="stylesheet" />
+<script src="lib301d3fe5a162/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="lib301d3fe5a162/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="lib301d3fe5a162/bootstrap-3.3.5/shim/respond.min.js"></script>
+<script src="lib301d3fe5a162/kePrint-0.0.1/kePrint.js"></script>
+
+</head>
+<body style="background-color:white;">
+<table class="table" style="margin-left: auto; margin-right: auto;">
+ <thead>
+  <tr>
+   <th style="text-align:left;"> variable </th>
+   <th style="text-align:right;"> control_mean </th>
+   <th style="text-align:right;"> mtbi_mean </th>
+   <th style="text-align:right;"> t_stat </th>
+   <th style="text-align:right;"> p_value </th>
+   <th style="text-align:left;"> method </th>
+  </tr>
+ </thead>
+<tbody>
+  <tr>
+   <td style="text-align:left;"> wtar </td>
+   <td style="text-align:right;"> 41.071429 </td>
+   <td style="text-align:right;"> 38.000000 </td>
+   <td style="text-align:right;"> 1.6658919 </td>
+   <td style="text-align:right;"> 0.1020349 </td>
+   <td style="text-align:left;"> Welch Two Sample t-test </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> tma_bl </td>
+   <td style="text-align:right;"> 26.618929 </td>
+   <td style="text-align:right;"> 26.685333 </td>
+   <td style="text-align:right;"> -0.0269108 </td>
+   <td style="text-align:right;"> 0.9786281 </td>
+   <td style="text-align:left;"> Welch Two Sample t-test </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> tmb_bl </td>
+   <td style="text-align:right;"> 51.646071 </td>
+   <td style="text-align:right;"> 57.942000 </td>
+   <td style="text-align:right;"> -1.2601091 </td>
+   <td style="text-align:right;"> 0.2129062 </td>
+   <td style="text-align:left;"> Welch Two Sample t-test </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> ravlt_t1_bl </td>
+   <td style="text-align:right;"> 8.107143 </td>
+   <td style="text-align:right;"> 7.000000 </td>
+   <td style="text-align:right;"> 2.3737622 </td>
+   <td style="text-align:right;"> 0.0212217 </td>
+   <td style="text-align:left;"> Welch Two Sample t-test </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> ravl_t2_bl </td>
+   <td style="text-align:right;"> 10.500000 </td>
+   <td style="text-align:right;"> 9.733333 </td>
+   <td style="text-align:right;"> 1.3242467 </td>
+   <td style="text-align:right;"> 0.1908424 </td>
+   <td style="text-align:left;"> Welch Two Sample t-test </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> ravlt_t3_bl </td>
+   <td style="text-align:right;"> 12.428571 </td>
+   <td style="text-align:right;"> 11.266667 </td>
+   <td style="text-align:right;"> 2.1760366 </td>
+   <td style="text-align:right;"> 0.0338317 </td>
+   <td style="text-align:left;"> Welch Two Sample t-test </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> ravlt_t4_bl </td>
+   <td style="text-align:right;"> 12.785714 </td>
+   <td style="text-align:right;"> 11.966667 </td>
+   <td style="text-align:right;"> 1.7386986 </td>
+   <td style="text-align:right;"> 0.0876311 </td>
+   <td style="text-align:left;"> Welch Two Sample t-test </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> ravlt_t5_bl </td>
+   <td style="text-align:right;"> 13.535714 </td>
+   <td style="text-align:right;"> 13.033333 </td>
+   <td style="text-align:right;"> 1.2146710 </td>
+   <td style="text-align:right;"> 0.2296026 </td>
+   <td style="text-align:left;"> Welch Two Sample t-test </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> ravlt_t_bl </td>
+   <td style="text-align:right;"> 57.142857 </td>
+   <td style="text-align:right;"> 52.900000 </td>
+   <td style="text-align:right;"> 2.0230565 </td>
+   <td style="text-align:right;"> 0.0478571 </td>
+   <td style="text-align:left;"> Welch Two Sample t-test </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> ravlt_a6a5_bl </td>
+   <td style="text-align:right;"> -1.464286 </td>
+   <td style="text-align:right;"> -2.172414 </td>
+   <td style="text-align:right;"> 1.6666750 </td>
+   <td style="text-align:right;"> 0.1017539 </td>
+   <td style="text-align:left;"> Welch Two Sample t-test </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> ravlt_d_bl </td>
+   <td style="text-align:right;"> 12.214286 </td>
+   <td style="text-align:right;"> 11.100000 </td>
+   <td style="text-align:right;"> 1.6578764 </td>
+   <td style="text-align:right;"> 0.1033751 </td>
+   <td style="text-align:left;"> Welch Two Sample t-test </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> bvmt_t1_bl </td>
+   <td style="text-align:right;"> 6.571429 </td>
+   <td style="text-align:right;"> 7.200000 </td>
+   <td style="text-align:right;"> -1.1009724 </td>
+   <td style="text-align:right;"> 0.2756186 </td>
+   <td style="text-align:left;"> Welch Two Sample t-test </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> bvmt_t2_bl </td>
+   <td style="text-align:right;"> 9.928571 </td>
+   <td style="text-align:right;"> 10.433333 </td>
+   <td style="text-align:right;"> -1.0994460 </td>
+   <td style="text-align:right;"> 0.2764918 </td>
+   <td style="text-align:left;"> Welch Two Sample t-test </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> bvmt_t3_bl </td>
+   <td style="text-align:right;"> 10.928571 </td>
+   <td style="text-align:right;"> 11.300000 </td>
+   <td style="text-align:right;"> -1.3581180 </td>
+   <td style="text-align:right;"> 0.1822165 </td>
+   <td style="text-align:left;"> Welch Two Sample t-test </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> totalbvmt_bl </td>
+   <td style="text-align:right;"> 27.428571 </td>
+   <td style="text-align:right;"> 28.933333 </td>
+   <td style="text-align:right;"> -1.3352023 </td>
+   <td style="text-align:right;"> 0.1874273 </td>
+   <td style="text-align:left;"> Welch Two Sample t-test </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> ds_fwd_bl </td>
+   <td style="text-align:right;"> 11.464286 </td>
+   <td style="text-align:right;"> 10.800000 </td>
+   <td style="text-align:right;"> 0.9551808 </td>
+   <td style="text-align:right;"> 0.3438144 </td>
+   <td style="text-align:left;"> Welch Two Sample t-test </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> ds_bwd_bl </td>
+   <td style="text-align:right;"> 8.428571 </td>
+   <td style="text-align:right;"> 7.333333 </td>
+   <td style="text-align:right;"> 1.8928094 </td>
+   <td style="text-align:right;"> 0.0643295 </td>
+   <td style="text-align:left;"> Welch Two Sample t-test </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> ds_total_bl </td>
+   <td style="text-align:right;"> 19.892857 </td>
+   <td style="text-align:right;"> 18.133333 </td>
+   <td style="text-align:right;"> 1.5030335 </td>
+   <td style="text-align:right;"> 0.1389264 </td>
+   <td style="text-align:left;"> Welch Two Sample t-test </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> lns_bl </td>
+   <td style="text-align:right;"> 11.892857 </td>
+   <td style="text-align:right;"> 11.518519 </td>
+   <td style="text-align:right;"> 0.5203052 </td>
+   <td style="text-align:right;"> 0.6050708 </td>
+   <td style="text-align:left;"> Welch Two Sample t-test </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> coding_bl </td>
+   <td style="text-align:right;"> 63.750000 </td>
+   <td style="text-align:right;"> 58.166667 </td>
+   <td style="text-align:right;"> 2.2077676 </td>
+   <td style="text-align:right;"> 0.0321154 </td>
+   <td style="text-align:left;"> Welch Two Sample t-test </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> symbolsearch_bl </td>
+   <td style="text-align:right;"> 36.678571 </td>
+   <td style="text-align:right;"> 35.400000 </td>
+   <td style="text-align:right;"> 0.6967356 </td>
+   <td style="text-align:right;"> 0.4888644 </td>
+   <td style="text-align:left;"> Welch Two Sample t-test </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> ravlt_recognition </td>
+   <td style="text-align:right;"> 39.821429 </td>
+   <td style="text-align:right;"> 37.592593 </td>
+   <td style="text-align:right;"> 1.9896764 </td>
+   <td style="text-align:right;"> 0.0518002 </td>
+   <td style="text-align:left;"> Welch Two Sample t-test </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> arithmetic_bl </td>
+   <td style="text-align:right;"> 15.428571 </td>
+   <td style="text-align:right;"> 15.620690 </td>
+   <td style="text-align:right;"> -0.1933783 </td>
+   <td style="text-align:right;"> 0.8473856 </td>
+   <td style="text-align:left;"> Welch Two Sample t-test </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> cowat_bl </td>
+   <td style="text-align:right;"> 44.071429 </td>
+   <td style="text-align:right;"> 41.428571 </td>
+   <td style="text-align:right;"> 0.9338729 </td>
+   <td style="text-align:right;"> 0.3551945 </td>
+   <td style="text-align:left;"> Welch Two Sample t-test </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> bvmt_delay_recall </td>
+   <td style="text-align:right;"> 10.607143 </td>
+   <td style="text-align:right;"> 10.964286 </td>
+   <td style="text-align:right;"> -0.9053575 </td>
+   <td style="text-align:right;"> 0.3693151 </td>
+   <td style="text-align:left;"> Welch Two Sample t-test </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> bvmt_recognition </td>
+   <td style="text-align:right;"> 12.000000 </td>
+   <td style="text-align:right;"> 11.896552 </td>
+   <td style="text-align:right;"> 1.7974341 </td>
+   <td style="text-align:right;"> 0.0830606 </td>
+   <td style="text-align:left;"> Welch Two Sample t-test </td>
+  </tr>
+</tbody>
+</table>
+</body>
+</html>

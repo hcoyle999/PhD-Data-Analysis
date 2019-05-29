@@ -1,0 +1,171 @@
+Scenario - Digit Span
+Logfile written - 07/26/2017 18:40:23
+
+Subject	Trial	Event Type	Code	event_cond(str)	block_number(num)	test_type(str)	trial_number(num)	current_length(num)	sequence(str)	resp(str)	accuracy(str)	rt(num)	Time	TTime	Uncertainty	Duration	Uncertainty	ReqTime	ReqDur	Stim Type	Pair Index
+
+011_BL_Post	1	Picture	Instructions	Instructions									441	0	226	165206	227	0	next	other	0
+011_BL_Post	1	Response	100										165475	165034	2
+011_BL_Post	4	Picture	digit	digit									190977	0	2	14999	3	0	next	other	0
+011_BL_Post	6	Picture	digit	digit									205976	0	1	9999	2	0	next	other	0
+011_BL_Post	7	Picture	Stim;1;Backward;1;2;28;82;Correct;1717	Stim	1	Backward	1	2	28	82	Correct	1717	215975	0	1	166	2	0	next	other	0
+011_BL_Post	7	Response	100										233143	17168	3
+011_BL_Post	7	Text Input	82										233143	17168	3
+011_BL_Post	11	Picture	digit	digit									268635	0	2	14999	3	0	next	other	0
+011_BL_Post	13	Picture	digit	digit									283634	0	1	9998	3	0	next	other	0
+011_BL_Post	14	Picture	Stim;1;Backward;2;2;93;39;Correct;2110	Stim	1	Backward	2	2	93	39	Correct	2110	293632	0	2	167	3	0	next	other	0
+011_BL_Post	14	Response	100										314730	21098	2
+011_BL_Post	14	Text Input	39										314730	21098	2
+011_BL_Post	18	Picture	digit	digit									350126	0	1	14998	3	0	next	other	0
+011_BL_Post	20	Picture	digit	digit									365124	0	2	14999	3	0	next	other	0
+011_BL_Post	22	Picture	digit	digit									380123	0	1	9998	3	0	next	other	0
+011_BL_Post	23	Picture	Stim;1;Backward;3;3;695;596;Correct;1403	Stim	1	Backward	3	3	695	596	Correct	1403	390121	0	2	167	3	0	next	other	0
+011_BL_Post	23	Response	100										404155	14034	2
+011_BL_Post	23	Text Input	596										404155	14034	2
+011_BL_Post	27	Picture	digit	digit									439449	0	1	14999	2	0	next	other	0
+011_BL_Post	29	Picture	digit	digit									454448	0	1	14998	2	0	next	other	0
+011_BL_Post	31	Picture	digit	digit									469446	0	1	9999	2	0	next	other	0
+011_BL_Post	32	Picture	Stim;1;Backward;4;3;526;625;Correct;1350	Stim	1	Backward	4	3	526	625	Correct	1350	479445	0	1	166	3	0	next	other	0
+011_BL_Post	32	Response	100										492940	13495	3
+011_BL_Post	32	Text Input	625										492940	13495	2
+011_BL_Post	36	Picture	digit	digit									528272	0	2	14999	3	0	next	other	0
+011_BL_Post	38	Picture	digit	digit									543271	0	1	14998	2	0	next	other	0
+011_BL_Post	40	Picture	digit	digit									558269	0	1	14998	3	0	next	other	0
+011_BL_Post	42	Picture	digit	digit									573267	0	2	9999	4	0	next	other	0
+011_BL_Post	43	Picture	Stim;1;Backward;5;4;7259;9257;Incorrect;5157	Stim	1	Backward	5	4	7259	9257	Incorrect	5157	583266	0	2	167	3	0	next	other	0
+011_BL_Post	43	Response	100										634836	51570	3
+011_BL_Post	43	Text Input	9257										634836	51570	3
+011_BL_Post	47	Picture	digit	digit									670256	0	2	14999	3	0	next	other	0
+011_BL_Post	49	Picture	digit	digit									685255	0	1	14998	2	0	next	other	0
+011_BL_Post	51	Picture	digit	digit									700253	0	1	14998	3	0	next	other	0
+011_BL_Post	53	Picture	digit	digit									715251	0	2	9999	4	0	next	other	0
+011_BL_Post	54	Picture	Stim;1;Backward;6;4;9263;3629;Correct;7388	Stim	1	Backward	6	4	9263	3629	Correct	7388	725250	0	2	167	3	0	next	other	0
+011_BL_Post	54	Response	100										799129	73879	3
+011_BL_Post	54	Text Input	3629										799129	73879	2
+011_BL_Post	58	Picture	digit	digit									834404	0	2	14999	3	0	next	other	0
+011_BL_Post	60	Picture	digit	digit									849403	0	1	14998	2	0	next	other	0
+011_BL_Post	62	Picture	digit	digit									864401	0	1	14998	2	0	next	other	0
+011_BL_Post	64	Picture	digit	digit									879399	0	1	14998	3	0	next	other	0
+011_BL_Post	66	Picture	digit	digit									894397	0	2	9999	4	0	next	other	0
+011_BL_Post	67	Picture	Stim;1;Backward;7;5;62593;35926;Incorrect;14717	Stim	1	Backward	7	5	62593	35926	Incorrect	14717	904396	0	2	167	3	0	next	other	0
+011_BL_Post	67	Response	100										1051567	147171	2
+011_BL_Post	67	Text Input	35926										1051567	147171	2
+011_BL_Post	71	Picture	digit	digit									1086876	0	1	14998	2	0	next	other	0
+011_BL_Post	73	Picture	digit	digit									1101874	0	1	14998	2	0	next	other	0
+011_BL_Post	75	Picture	digit	digit									1116872	0	1	14999	2	0	next	other	0
+011_BL_Post	77	Picture	digit	digit									1131871	0	1	14998	2	0	next	other	0
+011_BL_Post	79	Picture	digit	digit									1146869	0	1	9999	2	0	next	other	0
+011_BL_Post	80	Picture	Stim;1;Backward;8;5;17385;58371;Correct;6012	Stim	1	Backward	8	5	17385	58371	Correct	6012	1156868	0	1	166	3	0	next	other	0
+011_BL_Post	80	Response	100										1216979	60111	3
+011_BL_Post	80	Text Input	58371										1216979	60111	2
+011_BL_Post	84	Picture	digit	digit									1252190	0	1	14998	3	0	next	other	0
+011_BL_Post	86	Picture	digit	digit									1267188	0	2	14999	3	0	next	other	0
+011_BL_Post	88	Picture	digit	digit									1282187	0	1	14998	2	0	next	other	0
+011_BL_Post	90	Picture	digit	digit									1297185	0	1	14998	3	0	next	other	0
+011_BL_Post	92	Picture	digit	digit									1312183	0	2	14999	3	0	next	other	0
+011_BL_Post	94	Picture	digit	digit									1327182	0	1	9998	3	0	next	other	0
+011_BL_Post	95	Picture	Stim;1;Backward;9;6;482951;159284;Correct;5577	Stim	1	Backward	9	6	482951	159284	Correct	5577	1337180	0	2	167	3	0	next	other	0
+011_BL_Post	95	Response	100										1392950	55770	2
+011_BL_Post	95	Text Input	159284										1392950	55770	2
+011_BL_Post	99	Picture	digit	digit									1428170	0	2	14998	4	0	next	other	0
+011_BL_Post	101	Picture	digit	digit									1443168	0	2	14999	3	0	next	other	0
+011_BL_Post	103	Picture	digit	digit									1458167	0	1	14998	2	0	next	other	0
+011_BL_Post	105	Picture	digit	digit									1473165	0	1	14998	3	0	next	other	0
+011_BL_Post	107	Picture	digit	digit									1488163	0	2	14999	3	0	next	other	0
+011_BL_Post	109	Picture	digit	digit									1503162	0	1	9998	3	0	next	other	0
+011_BL_Post	110	Picture	Stim;1;Backward;10;6;947152;251749;Correct;5720	Stim	1	Backward	10	6	947152	251749	Correct	5720	1513160	0	2	167	3	0	next	other	0
+011_BL_Post	110	Response	100										1570360	57200	3
+011_BL_Post	110	Text Input	251749										1570360	57200	2
+011_BL_Post	114	Picture	digit	digit									1605650	0	1	14998	2	0	next	other	0
+011_BL_Post	116	Picture	digit	digit									1620648	0	1	14999	2	0	next	other	0
+011_BL_Post	118	Picture	digit	digit									1635647	0	1	14998	2	0	next	other	0
+011_BL_Post	120	Picture	digit	digit									1650645	0	1	14998	2	0	next	other	0
+011_BL_Post	122	Picture	digit	digit									1665643	0	1	14998	3	0	next	other	0
+011_BL_Post	124	Picture	digit	digit									1680641	0	2	14999	3	0	next	other	0
+011_BL_Post	126	Picture	digit	digit									1695640	0	1	9999	2	0	next	other	0
+011_BL_Post	127	Picture	Stim;1;Backward;11;7;3951847;7481529;Incorrect;21059	Stim	1	Backward	11	7	3951847	7481529	Incorrect	21059	1705639	0	1	166	2	0	next	other	0
+011_BL_Post	127	Response	100										1916222	210583	3
+011_BL_Post	127	Text Input	7481529										1916222	210583	3
+011_BL_Post	131	Picture	digit	digit									1951444	0	1	14998	2	0	next	other	0
+011_BL_Post	133	Picture	digit	digit									1966442	0	1	14999	2	0	next	other	0
+011_BL_Post	135	Picture	digit	digit									1981441	0	1	14998	2	0	next	other	0
+011_BL_Post	137	Picture	digit	digit									1996439	0	1	14998	2	0	next	other	0
+011_BL_Post	139	Picture	digit	digit									2011437	0	1	14998	3	0	next	other	0
+011_BL_Post	141	Picture	digit	digit									2026435	0	2	14999	3	0	next	other	0
+011_BL_Post	143	Picture	digit	digit									2041434	0	1	9999	2	0	next	other	0
+011_BL_Post	144	Picture	Stim;1;Backward;12;7;9483716;6471839;Incorrect;20649	Stim	1	Backward	12	7	9483716	6471839	Incorrect	20649	2051433	0	1	166	2	0	next	other	0
+011_BL_Post	144	Response	100										2257925	206492	3
+011_BL_Post	144	Text Input	6471839										2257925	206492	3
+011_BL_Post	146	Picture	Instructions	Instructions									2268241	0	1	26497	2	0	next	other	0
+011_BL_Post	146	Response	100										2294559	26318	3
+
+
+Event Type	Code	Type	Response	RT	RT Uncertainty	Time	Uncertainty	Duration	Uncertainty	ReqTime	ReqDur
+
+Picture	Instructions	other				441	226	165206	227	0	next
+Picture	digit	other				190977	2	14999	3	0	next
+Picture	digit	other				205976	1	9999	2	0	next
+Picture	Stim;1;Backward;1;2;28;82;Correct;1717	other				215975	1	166	2	0	next
+Picture	digit	other				268635	2	14999	3	0	next
+Picture	digit	other				283634	1	9998	3	0	next
+Picture	Stim;1;Backward;2;2;93;39;Correct;2110	other				293632	2	167	3	0	next
+Picture	digit	other				350126	1	14998	3	0	next
+Picture	digit	other				365124	2	14999	3	0	next
+Picture	digit	other				380123	1	9998	3	0	next
+Picture	Stim;1;Backward;3;3;695;596;Correct;1403	other				390121	2	167	3	0	next
+Picture	digit	other				439449	1	14999	2	0	next
+Picture	digit	other				454448	1	14998	2	0	next
+Picture	digit	other				469446	1	9999	2	0	next
+Picture	Stim;1;Backward;4;3;526;625;Correct;1350	other				479445	1	166	3	0	next
+Picture	digit	other				528272	2	14999	3	0	next
+Picture	digit	other				543271	1	14998	2	0	next
+Picture	digit	other				558269	1	14998	3	0	next
+Picture	digit	other				573267	2	9999	4	0	next
+Picture	Stim;1;Backward;5;4;7259;9257;Incorrect;5157	other				583266	2	167	3	0	next
+Picture	digit	other				670256	2	14999	3	0	next
+Picture	digit	other				685255	1	14998	2	0	next
+Picture	digit	other				700253	1	14998	3	0	next
+Picture	digit	other				715251	2	9999	4	0	next
+Picture	Stim;1;Backward;6;4;9263;3629;Correct;7388	other				725250	2	167	3	0	next
+Picture	digit	other				834404	2	14999	3	0	next
+Picture	digit	other				849403	1	14998	2	0	next
+Picture	digit	other				864401	1	14998	2	0	next
+Picture	digit	other				879399	1	14998	3	0	next
+Picture	digit	other				894397	2	9999	4	0	next
+Picture	Stim;1;Backward;7;5;62593;35926;Incorrect;14717	other				904396	2	167	3	0	next
+Picture	digit	other				1086876	1	14998	2	0	next
+Picture	digit	other				1101874	1	14998	2	0	next
+Picture	digit	other				1116872	1	14999	2	0	next
+Picture	digit	other				1131871	1	14998	2	0	next
+Picture	digit	other				1146869	1	9999	2	0	next
+Picture	Stim;1;Backward;8;5;17385;58371;Correct;6012	other				1156868	1	166	3	0	next
+Picture	digit	other				1252190	1	14998	3	0	next
+Picture	digit	other				1267188	2	14999	3	0	next
+Picture	digit	other				1282187	1	14998	2	0	next
+Picture	digit	other				1297185	1	14998	3	0	next
+Picture	digit	other				1312183	2	14999	3	0	next
+Picture	digit	other				1327182	1	9998	3	0	next
+Picture	Stim;1;Backward;9;6;482951;159284;Correct;5577	other				1337180	2	167	3	0	next
+Picture	digit	other				1428170	2	14998	4	0	next
+Picture	digit	other				1443168	2	14999	3	0	next
+Picture	digit	other				1458167	1	14998	2	0	next
+Picture	digit	other				1473165	1	14998	3	0	next
+Picture	digit	other				1488163	2	14999	3	0	next
+Picture	digit	other				1503162	1	9998	3	0	next
+Picture	Stim;1;Backward;10;6;947152;251749;Correct;5720	other				1513160	2	167	3	0	next
+Picture	digit	other				1605650	1	14998	2	0	next
+Picture	digit	other				1620648	1	14999	2	0	next
+Picture	digit	other				1635647	1	14998	2	0	next
+Picture	digit	other				1650645	1	14998	2	0	next
+Picture	digit	other				1665643	1	14998	3	0	next
+Picture	digit	other				1680641	2	14999	3	0	next
+Picture	digit	other				1695640	1	9999	2	0	next
+Picture	Stim;1;Backward;11;7;3951847;7481529;Incorrect;21059	other				1705639	1	166	2	0	next
+Picture	digit	other				1951444	1	14998	2	0	next
+Picture	digit	other				1966442	1	14999	2	0	next
+Picture	digit	other				1981441	1	14998	2	0	next
+Picture	digit	other				1996439	1	14998	2	0	next
+Picture	digit	other				2011437	1	14998	3	0	next
+Picture	digit	other				2026435	2	14999	3	0	next
+Picture	digit	other				2041434	1	9999	2	0	next
+Picture	Stim;1;Backward;12;7;9483716;6471839;Incorrect;20649	other				2051433	1	166	2	0	next
+Picture	Instructions	other				2268241	1	26497	2	0	next
