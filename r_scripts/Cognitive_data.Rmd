@@ -1,0 +1,491 @@
+---
+title: "Cognitive_data"
+author: "Hannah Coyle"
+email: "hannah.coyle@monash.edu"
+date: "`r Sys.Date()`"
+output: html_document
+---
+# Analysising clinical and cognitive data across three time points in a sample of mild traumatic brain injury (mtbi) patient.s
+
+# Hannah Coyle
+  #This r markdown document and output is for my cognitive data. Includes visualisation, tests of normality and hypothesis testing. 
+```{r global_option, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
+                      echo=TRUE, warning=FALSE, message=FALSE, eval=TRUE)
+```
+
+```{r load libraries, include=FALSE}
+library(knitr)
+library(rmarkdown)
+library(psych)
+library(tidyverse)
+library(naniar)
+library(GGally) #visualising correlations
+```
+
+#1. Load data 
+```{r get my saved data frame, include=FALSE}
+## Open my R data file 
+load("~/Documents/PHD-Data-Analysis/PHD-Data-Analysis/Analysis/Data/COMBINED_COG_PhD.Rdata")
+
+#exclude participants
+COMBINED_COG_PhD <-subset(COMBINED_COG_PhD,!code %in% c(7, 16))
+
+# creat subset of cognitive data
+cog_data_BL <- select(COMBINED_COG_PhD, group, wtar:bvmt_recognition)
+
+# make group a factor so can use group_by()
+cog_data_BL$group<-mutate(group= as.factor(cog_data_bl$group))
+```
+
+#1. Descriptives, normality and outlier detection 
+```{r exploration and descriptives on cog variables, include=FALSE}
+# must attach data frame prior to running next lines of code or won't work
+attach(cog_data_BL)
+
+#A. Run descriptive stats and check for missing data 
+Cog_skimrSummary <- cog_data_BL %>%
+  group_by(group) %>%
+  skimr::skim_to_wide() %>%
+  dplyr::select(type,
+                group,
+                variable,
+                missing,
+                complete,
+                mean,
+                sd,
+                median = p50,
+                hist)
+
+#B. Check for normality (and filter by p value)
+norm_test_df<- cog_data_BL %>%
+  group_by(group) %>%
+  normality() %>%
+  filter(p_value < 0.05)
+   
+#C. Check for equality of variance (across all variables in cog_data_bl by group)
+# test for equality of variances 
+var_test_df<- cog_data_BL %>%
+  select_if(is.numeric) %>%
+  map_df(~ broom::tidy(var.test(. ~ group)), .id = 'var') %>%
+  select(var, statistic, p.value, method) 
+
+#D. Run stats to look for difference between the means (across all variables in cog_data_bl by group)
+# test for difference in means 
+t_test_df<- cog_data_BL %>%
+  select_if(is.numeric) %>%
+  map_df(~ broom::tidy(t.test(. ~ group)), .id = 'var') %>%
+  select(var, estimate1, estimate2, statistic, p.value, method) %>%
+  setNames(c(var='variable',estimate1='control_mean', estimate2='mtbi_mean', statistic='t_stat',p.vale='p_vale',method='method'))
+
+t_test_df %>%
+  kable() %>%
+  kable_styling()
+
+#E. Identify outliers 
+
+outlierKD <- function(dt, var) {
+  var_name <- eval(substitute(var),eval(dt))
+  tot <- sum(!is.na(var_name))
+  na1 <- sum(is.na(var_name))
+  m1 <- mean(var_name, na.rm = T)
+  name<- substitute(var)
+  par(mfrow=c(2, 2), oma=c(0,0,3,0))
+  boxplot(var_name, main=(paste("With outliers_",name)))
+  hist(var_name, main=(paste("With outliers_",name)), xlab=NA, ylab=NA)
+  outlier <- boxplot.stats(var_name)$out
+  mo <- mean(outlier)
+  var_name <- ifelse(var_name %in% outlier, NA, var_name)
+  boxplot(var_name, main=(paste("Without outliers_",name)))
+  hist(var_name, main=(paste("Without outliers_",name)), xlab=NA, ylab=NA)
+  na2 <- sum(is.na(var_name))
+  message("Outliers identified: ", na2 - na1, " from ", tot, " observations")
+  message("Proportion (%) of outliers: ", (na2 - na1) / tot*100)
+  message("Mean of the outliers: ", mo)
+  m2 <- mean(var_name, na.rm = T)
+  message("Mean without removing outliers: ", m1)
+  message("Mean if we remove outliers: ", m2)
+  response <- readline(prompt="Do you want to remove outliers and to replace with NA? [yes/no]: ")
+  if(response == "y" | response == "yes"){
+    dt[as.character(substitute(var))] <- invisible(var_name)
+    assign(as.character(as.list(match.call())$dt), dt, envir = .GlobalEnv)
+    message("Outliers successfully removed", "\n")
+    return(invisible(dt))
+    text(paste("Outlier Check_",name), pos=1)
+  } else{
+    message("Nothing changed", "\n")
+    text(paste("Outlier Check_",name),pos=1)
+    return(invisible(var_name))
+  }
+}
+outlierKD(cog_data_BL, tma_bl)
+outlierKD(cog_data_BL, tmb_bl)
+outlierKD(cog_data_BL, ravlt_d_bl)
+
+var_names<-dput(names(cog_data_BL))  ## all the variables that outliers need to be checked for
+#"tma_bl", "tmb_bl", "ravlt_t1_bl", "ravl_t2_bl", 
+#"ravlt_t3_bl", "ravlt_t4_bl", "ravlt_t5_bl", "ravlt_t_bl", "ravlt_a6a5_bl", 
+#"ravlt_d_bl", "bvmt_t1_bl", "bvmt_t2_bl", "bvmt_t3_bl", "totalbvmt_bl", 
+#"ds_fwd_bl", "ds_bwd_bl", "ds_total_bl", "lns_bl", "coding_bl", 
+#"symbolsearch_bl", "ravlt_recognition", "arithmetic_bl", "cowat_bl", 
+#"bvmt_delay_recall", "bvmt_recognition"
+
+```
+
+#2. Create descriptives table for baseline paper
+```{r create descriptives summary table for baseline paper}
+#change categorical variables to factors
+myVars_1 <- c(names(cog_data_BL))
+myVars_1 <- myVars_1[-(1:1)] #remove code and group
+catVars_1 <- c("group")
+
+#create table by group
+cog_tab_1 <- CreateTableOne(vars = myVars_1, strata = "group" , data = cog_data_BL, factorVars = catVars_1)
+
+# see results (this is equivalent to running a t-test on each variable (via map_df), however also get SD output)
+print(cog_tab_1)
+
+#see a summary of data (look for skew, kurtosis etc) - but can't save as a dataframe??
+summary(cog_tab_1, digits= 2)
+#do.call(cbind, lapply(cog_tab_1, summary))
+
+#get into right format for excel
+cog_data_BL<- print(cog_tab_1, exact="stage", quote=TRUE, nospaces=TRUE,printToggle = FALSE)
+
+# save as excel file
+write.csv(cog_data_BL, file="/Users/han.coyle/Documents/PHD-Data-Analysis/PHD-Data-Analysis/Analysis/Tables/cog_data_bl.csv")
+
+#load back in again ( this step is necessary for stargazer)
+cog_table<-read_csv(file="~/Documents/PHD-Data-Analysis/PHD-Data-Analysis/Analysis/Tables/cog_data_bl.csv")
+
+#stargazer does not work well wth tbl_df so change to data frame
+cog_table<-as.data.frame(cog_table) 
+
+#once back in df format can use in kable to look at data in viewer
+cog_table %>%
+  kable() %>%
+  kable_styling() 
+
+#save as an html so can input into baseline paper 
+stargazer(clin_table, title= "Cognitive Data", summary = FALSE, out="~/Documents/PHD-Data-Analysis/PHD-Data-Analysis/Analysis/Tables/cog_data_bl.html")
+```
+
+ #Once I have run descriptives, checked normality, homogeneity of variance and outliers and then created a descriptives table of my data...I am ready to start analysis. A good step here will be to resave r.data as "processed/cleaned" dataset so I don't confuse with the raw data.
+ 
+#1. Trail Making Test A and B (A= Sustained attention, visual scanning, processing speed, B= divided attention, working memory )
+```{r Trails A and B, include=FALSE}
+#decribe and check for missing data
+
+
+
+describe(control_df$tma_bl)
+describe(mtbi_df$tma_bl)
+pct_miss(COMBINED_COG_PhD$tma_bl)
+
+describe(control_df$tmb_bl)
+describe(mtbi_df$tmb_bl)
+pct_miss(COMBINED_COG_PhD$tmb_bl)
+
+#visualise data
+par(mfrow = c(1,2))
+tma_box<-boxplot(tma_bl~group, varwidth=TRUE,boxwex= 0.2,main="TMT A",names=c("control","mTBI"),ylab="Processing Speed (secs)",xlab="Baseline",col=c("light grey","light pink"))
+
+tmb_box<-boxplot(tmb_bl~group, varwidth=TRUE,boxwex= 0.2,main="TMT B",names=c("control","mTBI"),ylab="Processing Speed (secs)",xlab="Baseline",col=c("light grey","light pink"))
+
+#check normality
+shapiro.test(tma_bl[group=="control"])
+shapiro.test(tma_bl[group=="mtbi"])
+
+shapiro.test(tmb_bl[group=="control"])
+shapiro.test(tmb_bl[group=="mtbi"])
+
+#differences between the groups
+var.test(tma_bl~group) #variances are NOT equal
+t.test(tma_bl~ group, var.equal=TRUE) #even though not normal, ran t-test, not significant, but will need to check stats process
+
+var.test(tmb_bl~group) #variances are NOT equal
+t.test(tmb_bl~ group, var.equal=TRUE) #even though not normal, ran t-test, not significant, but will need to check stats process
+```
+#2 Verbal learning and memory (RAVLT)
+```{r RAVLT data, include=FALSE}
+#decribe and check for missing data
+describe(control_df$ravlt_t_bl)
+describe(mtbi_df$ravlt_t_bl)
+pct_miss(COMBINED_COG_PhD$ravlt_t_bl)
+
+describe(control_df$ravlt_t1_bl)
+describe(mtbi_df$ravlt_t1_bl)
+pct_miss(COMBINED_COG_PhD$ravlt_t1_bl)
+
+describe(control_df$ravlt_d_bl)
+describe(mtbi_df$ravlt_d_bl)
+pct_miss(COMBINED_COG_PhD$ravlt_d_bl)
+
+describe(control_df$ravlt_recognition)
+describe(mtbi_df$ravlt_recognition)
+pct_miss(COMBINED_COG_PhD$ravlt_recognition)
+
+#visualise data
+par(mfrow = c(1,4))
+ravlt_t1_box<-boxplot(ravlt_t1_bl~group, varwidth=TRUE,boxwex= 0.2,main="RAVLT trial 1 ",names=c("control","mTBI"),ylab="Verbal Learning",xlab="Baseline",col=c("light grey","light pink"))
+
+ravlt_t_box<-boxplot(ravlt_t_bl~group, varwidth=TRUE,boxwex= 0.2,main="RAVLT total",names=c("control","mTBI"),ylab="Verbal Learning",xlab="Baseline",col=c("light grey","light pink"))
+
+ravlt_d_box<-boxplot(ravlt_d_bl~group, varwidth=TRUE,boxwex= 0.2,main="RAVLT delay",names=c("control","mTBI"),ylab="Verbal Learning",xlab="Baseline",col=c("light grey","light pink"))
+
+ravlt_r_box<-boxplot(ravlt_recognition~group, varwidth=TRUE,boxwex= 0.2,main="RAVLT Recognition",names=c("control","mTBI"),ylab="Verbal Learning",xlab="Baseline",col=c("light grey","light pink"))
+
+#check normality
+shapiro.test(ravlt_t1_bl[group=="control"]) 
+shapiro.test(ravlt_t1_bl[group=="mtbi"]) #data is normally distributed for both groups
+
+shapiro.test(ravlt_t_bl[group=="control"])
+shapiro.test(ravlt_t_bl[group=="mtbi"]) #data not normally distributed
+
+shapiro.test(ravlt_d_bl[group=="control"])
+shapiro.test(ravlt_d_bl[group=="mtbi"]) #data not normally distributed
+
+shapiro.test(ravlt_recognition[group=="control"])
+shapiro.test(ravlt_recognition[group=="mtbi"]) #data normally distributed
+
+#differences between the groups
+var.test(ravlt_t1_bl~group) #variances are equal
+t.test(ravlt_t1_bl~ group, var.equal=TRUE) # normal, significant difference, mTBI encode LESS words on the first trial than controls
+
+var.test(ravlt_t_bl~group) #variances are equal
+t.test(ravlt_t_bl~ group, var.equal=TRUE) #even though not normal, ran t-test, approaching significance (p=0.05184), but will need to check stats process
+
+var.test(ravlt_d_bl~group) #variances are equal
+t.test(ravlt_d_bl~ group, var.equal=TRUE) #even though not normal, ran t-test, not significant
+
+var.test(ravlt_recognition~group) #variances are equal
+t.test(ravlt_recognition~ group, var.equal=TRUE) # normal, ran t-test, approaching sig p =0.05063
+
+# #playing with running t-tests all at one time
+# #create a group summary for RAVLT
+# grp_summary <- COMBINED_COG_PhD %>% 
+#   group_by(group) %>% 
+#   summarise(
+#     ravlt_t1_bl_mean = mean(ravlt_t1_bl),
+#     ravlt_t1_bl_var  = var(ravlt_t1_bl),
+#     ravlt_t_bl_mean = mean(ravlt_t_bl),
+#     ravlt_t_bl_var  = var(ravlt_t_bl),
+#     ravlt_recognition_mean = mean(ravlt_recognition, na.rm=TRUE),
+#     ravlt_recognition_var  = var(ravlt_recognition, na.rm=TRUE),
+#     n = n()
+#   )
+# 
+# welch_t <- diff(grp_summary$ravlt_t1_bl_mean) / sqrt(sum(grp_summary$ravlt_t1_bl_var/grp_summary$n))
+# cat("Welch's t value of the mean difference is", welch_t)
+
+#This is everything we need to obtain a t value, degrees of freedom, and a p value.
+
+```
+#3. Visual Learning (Breif Visual Memory Test)
+``` {r BVMT data, include=FALSE}
+#decribe and check for missing data
+describe(control_df$bvmt_t1_bl)
+describe(mtbi_df$bvmt_t1_bl)
+pct_miss(COMBINED_COG_PhD$bvmt_t1_bl)
+
+describe(control_df$totalbvmt_bl)
+describe(mtbi_df$totalbvmt_bl)
+pct_miss(COMBINED_COG_PhD$totalbvmt_bl)
+
+#visualise data
+par(mfrow = c(1,2))
+bvmt_t1_box<-boxplot(cog_data_BL$bvmt_t1_bl~group, varwidth=TRUE,boxwex= 0.2,main="BVMT trial 1 ",names=c("control","mTBI"),ylab="Visual Learning",xlab="Baseline",col=c("light grey","light pink"))
+
+ravlt_t_box<-boxplot(totalbvmt_bl~group, varwidth=TRUE,boxwex= 0.2,main="BVMT total",names=c("control","mTBI"),ylab="Visual Learning",xlab="Baseline",col=c("light grey","light pink"))
+
+
+
+```
+#4. WAIS Working Memory Index (DSF, DSB, LNS)
+``` {r WAIS WMI Data, include=FALSE}
+describe(control_df$ds_fwd_bl)
+describe(mtbi_df$ds_fwd_bl)
+pct_miss(COMBINED_COG_PhD$ds_fwd_bl)
+
+describe(control_df$ds_bwd_bl)
+describe(mtbi_df$ds_bwd_bl)
+pct_miss(COMBINED_COG_PhD$ds_bwd_bl)
+
+describe(control_df$ds_total_bl)
+describe(mtbi_df$ds_total_bl)
+pct_miss(COMBINED_COG_PhD$ds_total_bl)
+
+describe(control_df$lns_bl)
+describe(mtbi_df$lns_bl)
+pct_miss(COMBINED_COG_PhD$lns_bl)
+
+
+#visualise data (the long and complicated way ;| !) 
+par(mfrow = c(1,3))
+dsf_box<-boxplot(ds_fwd_bl~group, varwidth=TRUE,boxwex= 0.2,main="DS Forward ",names=c("control","mTBI"),ylab="Simple Attention",xlab="Baseline",col=c("light grey","light pink"))
+
+dsb_box<-boxplot(cog_data_BL$ds_bwd_bl~group, varwidth=TRUE,boxwex= 0.2,main="DS Backward",names=c("control","mTBI"),ylab="Working Memory",xlab="Baseline",col=c("light grey","light pink"))
+
+ds_total_box<-boxplot(ds_total_bl~group, varwidth=TRUE,boxwex= 0.2,main="DS Total delay",names=c("control","mTBI"),ylab="Processing Capacity",xlab="Baseline",col=c("light grey","light pink"))
+
+par(mfrow = c(1,1))
+lns_box<-boxplot(lns_bl~group, varwidth=TRUE,boxwex= 0.2,main="LNS Total delay",names=c("control","mTBI"),ylab="Processing Capacity",xlab="Baseline",col=c("light grey","light pink"))
+
+#visualise data (the cleverer way !!)
+#section of code to look at digit span longitudianlly in controls
+COMBINED_COG_PhD_clean %>%
+  filter(group== "control") %>%
+  select(ds_bwd_bl, ss_bck_t1, ss_bck_t2) %>%
+  gather(key="timepoint", value= "DSB", na.rm=FALSE) %>%
+  mutate(timepoint= as.factor(timepoint)) %>%
+  #t.test(timepoint, DSB, var.equal=TRUE)
+  ggplot(aes(x=timepoint,y = DSB)) + geom_boxplot()
+
+#section of code to look at digit span longitudinally in both groups 
+digit_span_longitudinally<- COMBINED_COG_PhD_clean %>%
+  group_by(group) %>%
+  select(ds_bwd_bl, ss_bck_t1, ss_bck_t2) %>%
+  gather(key="timepoint", value= "DSB",
+         ds_bwd_bl, ss_bck_t1, ss_bck_t2, na.rm=FALSE) %>%
+  mutate(timepoint= as.factor(timepoint)) %>%
+  #t.test(timepoint, DSB, var.equal=TRUE)
+  ggplot(aes(x=timepoint,y = DSB, fill=group)) + geom_boxplot()
+
+
+#test for normality
+shapiro.test(ds_fwd_bl[group=="control"]) 
+shapiro.test(ds_fwd_bl[group=="mtbi"]) #data is normally distributed for both groups
+
+shapiro.test(cog_data_BL$ds_bwd_bl[group=="control"])
+shapiro.test(cog_data_BL$ds_bwd_bl[group=="mtbi"]) #data is normally distributed for both groups
+
+shapiro.test(ds_total_bl[group=="control"])
+shapiro.test(ds_total_bl[group=="mtbi"]) #data is normally distributed for both groups
+
+#differences between the groups
+var.test(ds_fwd_bl~group) #variances are equal
+t.test(ds_fwd_bl~ group, var.equal=TRUE) # normal, not sig
+
+var.test(cog_data_BL$ds_bwd_bl~group) #variances are equal
+t.test(cog_data_BL$ds_bwd_bl~ group, var.equal=TRUE) #normal, approaching significance p=0.05972
+
+var.test(ds_total_bl~group) #variances are equal
+t.test(ds_total_bl~ group, var.equal=TRUE) # normal, not sig
+```
+#5 WAIS Processing Speed Index (Coding, Symbol Search)
+``` {r Processing Speed, include=TRUE}
+COMBINED_COG_PhD_clean %>%
+  group_by(group) %>%
+  select(coding_bl, coding_t1, coding_t2) %>%
+  gather(key="timepoint", value= "coding",
+         coding_bl, coding_t1, coding_t2, na.rm=FALSE) %>%
+  mutate(timepoint= as.factor(timepoint)) %>%
+  #t.test(timepoint, DSB, var.equal=TRUE)
+  ggplot(aes(x=timepoint,y = coding, fill=group)) + geom_boxplot()
+
+
+var.test(cog_data_BL$coding_bl~group) #variances are equal
+t.test(cog_data_BL$coding_bl~ group, var.equal=TRUE) #normal, 
+
+var.test(symbolsearch_bl~group) #variances are equal
+t.test(symbolsearch_bl~ group, var.equal=TRUE) # normal, not sig
+
+```
+#6 Playing around with correlations and plotting
+```{r correlation matrixes, include=TRUE}
+ggcorr(cog_data_BL, label = TRUE, label_alpha = TRUE)
+
+qplot(cog_data_BL$coding_bl, cog_data_BL$symbolsearch_bl,
+      geom = c("point","smooth"),
+      method= "lm",
+      alpha = I(1/5),
+      se=FALSE)
+
+#create a matrix that shows the correlation coefficient of multiple variables in conjunction with a scatterplot (including a line of best fit with a confidence interval) and a density plot
+ggpairs(cog_data_BL, 
+        columns = c("coding_bl", "symbolsearch_bl", "ds_fwd_bl"), 
+        upper = list(continuous = wrap("cor", 
+                                       size = 10)), 
+        lower = list(continuous = "smooth"))
+```
+
+```{r playing with interactive plots, include=TRUE}
+
+library(plotly)
+
+
+p <- COMBINED_COG_PhD %>%
+  ggplot(aes(coding_bl,symbolsearch_bl,colour= group,label= code)) +
+  geom_point () +
+  geom_smooth()
+
+ggplotly(p)
+#interactive scatterplot of coding and symbol search performance across both groups
+
+q <- mtbi_df %>%
+  ggplot(aes(coding_bl, education, label=code)) +
+  geom_point()
+
+ggplotly(q)
+
+#interactive scatterplot of coding and education. 
+
+plot_ly(COMBINED_COG_PhD, x= ~coding_bl, y)
+
+COMBINED_COG_PhD_clean %>%
+  group_by(group) %>%
+  select() %>%
+  gather(key="timepoint", value= "Verbal Fluency", cowat_bl, cowat_t1, cowat_t2, na.rm=FALSE) %>%
+  mutate(timepoint= as.factor(timepoint)) %>%
+  #t.test(timepoint, DSB, var.equal=TRUE)
+  ggplot(aes(x=timepoint,y = "Verbal Fluency", fill=group)) + geom_boxplot()
+
+COMBINED_COG_PhD_clean %>%
+  group_by(group) %>%
+  select(cowat_bl, cowat_t1, cowat_t2) %>%
+  gather(key="timepoint", value= "verbal_fluency",
+         cowat_bl, cowat_t1, cowat_t2, na.rm=FALSE) %>%
+  mutate(timepoint= as.factor(timepoint)) %>%
+  #t.test(timepoint, DSB, var.equal=TRUE)
+  ggplot(aes(x=timepoint,y = "verbal_fluency", fill=group)) + geom_line()
+
+
+```
+```{multiple normality tests, include=TRUE}
+
+ 
+
+
+### trying to do as a loop - wanted to do with t-test but giving error, more elements supplied than there are to replace
+cog_data_BL<- select(cog_data_BL,-wtar, -tma_bl)
+
+output <- matrix(28:2)  # 1. output
+for (i in seq_along(cog_data_BL)) {            # 2. sequence
+  output[[i]] <- shapiro.test(cog_data_BL[[i]])     }
+output
+
+
+get_mean <- function(df, digits= 2) {
+  maxstr <- max(str_length(names(df)))
+  for (nm in names(df)) {
+    if (is.numeric(df[[nm]])) {
+      cat(
+        str_c(str_pad(str_c(nm, ":"), maxstr + 1L, side = "right"),
+          format(mean(df[[nm]],digits = digits, nsmall =digits,na.rm=TRUE)),
+          sep = " "
+        ),
+        "\n"
+      ) 
+    }
+  }
+}
+
+
+n<-get_mean(cog_data_BL) # cant figure out how to make it save output as a df, also not working for normality testing which was the main aim. 
+
+with(cog_data_BL, tapply(wtar, group, shapiro.test))
+#for normality split by  both groups- but still is not for all
+
+with(cog_data_BL, tapply(cowat_bl, group, t.test))
+t.test(cowat_bl ~ group, var=TRUE)
+````

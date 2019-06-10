@@ -1,0 +1,220 @@
+---
+title: "Clinical_data"
+author: "Hannah Coyle"
+email: "hannah.coyle@monash.edu"
+date: "`r Sys.Date()`"
+output: html_document
+chunk_output_type: console
+
+---
+# Analysising clinical and cognitive data across three time points in a sample of mild traumatic brain injury (mtbi) patient.s
+
+# Hannah Coyle, , January 2019
+  #This r markdown document and output is for my clinical data. Includes visualisation, tests of normality and hypothesis testing. 
+
+```{r global_option, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
+                      echo=TRUE, warning=FALSE, message=FALSE, eval=TRUE, root.dir = '../..')
+
+#notes to self 
+  #when knitting rmarkdown files, all objects that are called need to have been created in this workspace
+  # [https://rmarkdown.rstudio.com/lesson-8.html] is a good resource on all things markdown
+
+#resource on dealing with outliers
+#http://r-statistics.co/Outlier-Treatment-With-R.html
+```
+
+```{r gen setup, include=FALSE}
+library(knitr)
+library(rmarkdown)
+library(psych)
+library(tidyverse)
+library(naniar)
+```
+
+```{r get my saved data frame, include=FALSE}
+## Open my R data file and create nec dataframes (this is step 1 if working off a clear workspace)
+load("~/Documents/PHD-Data-Analysis/PHD-Data-Analysis/Analysis/Data/COMBINED_COG_PhD.Rdata")
+
+# don't think I need this section anymore as can use the filter() and select()functions
+control_df <- filter(COMBINED_COG_PhD,group == "control") #control_df
+mtbi_df <- filter(COMBINED_COG_PhD,group == "mtbi") #mtbi_df
+# clin_data_BL <- select(COMBINED_COG_PhD,code, group, hads_anxiety_bl:mfi_mf_bl) # clinical_df at baseline
+cog_data_BL <- select(COMBINED_COG_PhD, group, wtar:bvmt_recognition) # cog_df at baseline
+
+#exclude participants
+COMBINED_COG_PhD <-subset(COMBINED_COG_PhD,!code %in% c(7, 16))
+```
+
+
+## Descriptives, visualisation, normality and hypothesis testing 
+# 1. Differences between the groups (age, education etc)
+```{r group differences, echo=FALSE}
+# to obtain all summary statistics
+ 
+  map_dbl(control_df, mean, na.rm=TRUE)
+  
+describeBy(cog_data_BL, group, mat = TRUE) 
+
+  
+describe(control_df$age)
+describe(mtbi_df$age)
+
+shapiro.test(age[group=="control"])
+shapiro.test(age[group=="mtbi"])
+var.test(age~group)
+t.test(age~ group, var.equal=TRUE) #parametric
+wilcox.test(age~group) #non parametric
+#this step is also done as part of table 1
+```
+
+
+#2 . WTAR Clinical data (measure of premorbid intelligence)
+```{r WTAR data, fig.width=8, fig.height=6, include=TRUE}
+##Summary
+describe(control_df$wtar)
+describe(mtbi_df$wtar)
+pct_miss(COMBINED_COG_PhD$wtar)
+
+##Plotting histograms and ensuring axes are same size
+par(mfrow = c(1,1))
+wtar_box<-boxplot(wtar~group, varwidth=TRUE,boxwex= 0.2,main="WTAR",names=c("control","mTBI"),ylab="Total Correct",xlab="Baseline",col=c("light grey","light pink"))
+
+#Using normal Q-Q plot (better when small sample sizes than a histogram)
+qqnorm(wtar[group=="control"],main="QQ plot of WTAR control data",pch=19)
+qqline(wtar)
+qqnorm(wtar[group=="mtbi"],main="QQ plot of WTAR control data",pch=19)
+qqline(wtar)
+
+#Assessing skewedness (negative values indicate left skew and positive indicate right skew) and kurtosis
+skew(wtar[group=="control"],na.rm=TRUE)
+skew(wtar[group=="mtbi"],na.rm=TRUE)
+kurtosi(wtar[group=="control"],na.rm=TRUE)
+kurtosi(wtar[group=="mtbi"],na.rm=TRUE)
+
+##Testing for normality (if p> .05 normality can be assumed- use Shapiro Wilk for smaller samples, non normal data means non paramertic tests should be used)
+shapiro.test(wtar[group=="control"])
+shapiro.test(wtar[group=="mtbi"])
+
+#wilcoxon rank test (non parametric equivalent of t-test)
+wilcox.test(wtar~group)
+t.test(wtar~ group, var.equal=TRUE)
+#this is not working- issue to do with ties?
+
+#WTAR for both groups shown to be non-normally distributed#
+```
+
+# 2. Mood differences between the groups (depression, anxiety and total symptoms)
+```{r HADS data, fig.width=8, fig.height=6, include=TRUE}
+#visualising the data (boxplots)
+par(mfrow = c(1,3))
+boxplot(hads_depression_bl~group, varwidth=TRUE,boxwex= 0.5,main="Depressive Sx's",names=c("control","mTBI"),ylab="Symptom Severity",xlab="Baseline",col=c("light grey","light pink"))
+boxplot(hads_anxiety_bl~group, varwidth=TRUE,boxwex= 0.5,main="Anxiety Sx's",names=c("control","mTBI"),ylab="Symptom Severity",xlab="Baseline",col=c("light grey","light pink"))
+boxplot(hads_total_bl~group, varwidth=TRUE,boxwex= 0.5,main="Total Sx's",names=c("control","mTBI"),ylab="Symptom Severity",xlab="Baseline",col=c("light grey","light pink"))
+
+
+##Testing for normality for HADS variables 
+describe(control_df$hads_total_bl)
+describe(mtbi_df$hads_total_bl)
+control_miss<-pct_miss(COMBINED_COG_PhD$hads_total_bl[group=="control"])
+mtbi_miss<- pct_miss(COMBINED_COG_PhD$hads_total_bl[group=="mtbi"])
+
+shapiro.test(hads_anxiety_bl[group=="control"])
+shapiro.test(hads_anxiety_bl[group=="mtbi"])
+
+shapiro.test(hads_depression_bl[group=="control"])
+shapiro.test(hads_depression_bl[group=="mtbi"])
+
+shapiro.test(hads_total_bl[group=="control"])
+shapiro.test(hads_total_bl[group=="mtbi"])
+
+#all data is non normal
+qqnorm(hads_total_bl[group=="control"],main="QQ plot of HADS control data",pch=19)
+qqline(hads_total_bl)
+qqnorm(hads_total_bl[group=="mtbi"],main="QQ plot of HADS mtbi data",pch=19)
+qqline(hads_total_bl)
+
+#not sure if and how to remove outliers
+#hypothesis testing- total sx severity
+var.test(hads_total_bl~group) #variances are NOT equal
+t.test(hads_total_bl~ group, var.equal=FALSE) #even though not normal, ran t-test, significant, but will need to check stats process
+
+#hypothesis testing- dep sx severity
+describe(control_df$hads_depression_bl)
+describe(mtbi_df$hads_depression_bl)
+var.test(hads_depression_bl~group) #variances are NOT equal
+t.test(hads_depression_bl~ group, var.equal=TRUE) #even though not normal, ran t-test, significant, but will need to check stats process
+
+#hypothesis testing- anx sx severity
+var.test(hads_anxiety_bl~group) #variances are NOT equal
+t.test(hads_anxiety_bl~ group, var.equal=TRUE) #even though not normal, ran t-test, significant, but will need to check stats process
+
+#HADS data shown to be non-normally distributed, but parametic analyses are showing sig differences
+```
+# 3. Fatigue differences between the two groups(5 domains, General Fatigue, Mental Fatigue, Physical Fatigue, Reduced Activity and Reduced Motivation)
+``` {r MFI data, include=TRUE}
+#create df with just MFI data
+  MFI_df <- select(COMBINED_COG_PhD, code, group, mfi_gf_bl:mfi_mf_bl)
+par(mfrow=c(1,5))
+boxplot(mfi_gf_bl~group, varwidth=TRUE,boxwex= 0.5,main="General Fatigue",names=c("control","mTBI"),ylab="Symptom Severity",xlab="Baseline",col=c("light grey","light pink"))
+boxplot(mfi_mf_bl~group, varwidth=TRUE,boxwex= 0.5,main="Mental Fatigue",names=c("control","mTBI"),ylab="Symptom Severity",xlab="Baseline",col=c("light grey","light pink"))
+boxplot(mfi_pf_bl~group, varwidth=TRUE,boxwex= 0.5,main="Physical Fatigue",names=c("control","mTBI"),ylab="Symptom Severity",xlab="Baseline",col=c("light grey","light pink"))
+boxplot(mfi_ra_bl~group, varwidth=TRUE,boxwex= 0.5,main="Reduced Activity",names=c("control","mTBI"),ylab="Symptom Severity",xlab="Baseline",col=c("light grey","light pink"))
+boxplot(mfi_rm_bl~group, varwidth=TRUE,boxwex= 0.5,main="Reduced Motivation",names=c("control","mTBI"),ylab="Symptom Severity",xlab="Baseline",col=c("light grey","light pink"))
+
+#have saved box plot manually- need to remember how to do in code
+#run normality tests
+shapiro.test(mfi_gf_bl[group=="control"])
+shapiro.test(mfi_gf_bl[group=="mtbi"]) # both normally distributed
+
+shapiro.test(mfi_mf_bl[group=="control"]) #not normal
+shapiro.test(mfi_mf_bl[group=="mtbi"]) #normal
+
+shapiro.test(mfi_pf_bl[group=="control"]) #not normal
+shapiro.test(mfi_pf_bl[group=="mtbi"]) #normal
+
+shapiro.test(mfi_ra_bl[group=="control"]) 
+shapiro.test(mfi_ra_bl[group=="mtbi"]) #both not normally distributed
+
+shapiro.test(mfi_rm_bl[group=="control"]) #not normal
+shapiro.test(mfi_rm_bl[group=="mtbi"]) #normal 
+
+#run t-test for fatigue
+var.test(mfi_gf_bl~group) #variances are equal
+t.test(mfi_gf_bl~ group, var.equal=TRUE) # sig difference, mTBI report higher levels of general fatigue
+var.test(mfi_pf_bl~group) #variances are equal
+t.test(mfi_pf_bl~ group, var.equal=TRUE) # sig difference, mTBI report higher levels of physical fatigue
+var.test(mfi_mf_bl~group) #variances are equal
+t.test(mfi_mf_bl~ group, var.equal=TRUE) # sig difference, mTBI report higher levels of mental fatigue
+var.test(mfi_ra_bl~group) #variances are equal
+t.test(mfi_ra_bl~ group, var.equal=TRUE) # sig difference, mTBI report higher levels of reduced activity
+var.test(mfi_rm_bl~group) #variances are equal
+t.test(mfi_rm_bl~ group, var.equal=TRUE) # sig difference, mTBI report higher levels of reduced motivation
+```
+
+# 4. Post Concussive Symptom differences between the two groups (RPQ3 (headaches, feelings of dizziness, nausea/vomiting) and RPQ13, total symptom report)
+```{r PCS data, include=TRUE}
+par(mfrow=c(1,2))
+boxplot(rpq_3_bl~group, varwidth=TRUE,boxwex= 0.5,main="RPQ-3",names=c("control","mTBI"),ylab="Symptom Severity",xlab="Baseline",col=c("light grey","light pink"))
+boxplot(rpq_13_bl~group, varwidth=TRUE,boxwex= 0.5,main="RPQ-13",names=c("control","mTBI"),ylab="Symptom Severity",xlab="Baseline",col=c("light grey","light pink"))
+
+shapiro.test(rpq_3_bl[group=="control"]) 
+shapiro.test(rpq_3_bl[group=="mtbi"]) #both not normally distributed
+
+shapiro.test(rpq_13_bl[group=="control"]) 
+shapiro.test(rpq_13_bl[group=="mtbi"])#both not normally distributed
+
+#run t-test for PCS
+var.test(rpq_3_bl~group) #variances are equal
+t.test(rpq_3_bl~ group, var.equal=FALSE) # sig difference, mTBI report higher levels of PCS on RPQ_3
+
+var.test(rpq_13_bl~group) #variances are equal
+t.test(rpq_13_bl~ group, var.equal=FALSE) # sig difference, mTBI report higher levels of PCS on RPQ_13
+```
+#5. Views about Health differences between the two groups(7 domains, Role limitations due to physical health, Role limitations due to emotional problems, Energy/fatigue, Emotional well-being,Social functioning, Pain, General health)
+```{r SF-36 Health Data, include=FALSE}
+ SF36_df <- select(COMBINED_COG_PhD, code, group, sf36_pf_bl:sf36_gh_bl)
+
+#to finish off SF-36 code later#
+```
+

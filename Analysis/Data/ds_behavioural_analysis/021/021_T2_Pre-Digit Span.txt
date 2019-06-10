@@ -1,0 +1,16 @@
+Block Number	Test Type	Trial Number	List Length	Sequence	Response	Accuracy	RT
+1	Backward	1	2	62	26	Correct	3094
+1	Backward	2	2	84	48	Correct	1834
+1	Backward	3	3	937	739	Correct	1378
+1	Backward	4	3	362	263	Correct	3518
+1	Backward	5	4	9174	4719	Correct	2807
+1	Backward	6	4	4715	5174	Correct	2093
+1	Backward	7	5	15284	48251	Correct	3475
+1	Backward	8	5	15839	93851	Correct	3346
+1	Backward	9	6	372594	49752	Incorrect	19480
+1	Backward	10	6	958147	741859	Correct	6044
+1	Backward	11	7	1694837	7384961	Correct	7404
+1	Backward	12	7	9625174	4715269	Correct	10565
+1	Backward	13	8	71639582	2836479	Incorrect	16210
+1	Backward	14	8	82736941	147369	Incorrect	9872
+
