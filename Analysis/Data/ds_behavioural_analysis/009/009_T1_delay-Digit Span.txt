@@ -1,2 +1,0 @@
-Block Number	Test Type	Trial Number	List Length	Sequence	Response	Accuracy	RT
-
