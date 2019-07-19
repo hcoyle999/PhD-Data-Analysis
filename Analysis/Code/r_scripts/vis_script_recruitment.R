@@ -21,6 +21,8 @@ graph<- recruitment_tally %>%
   scale_x_date(date_labels = "%b %Y")+
   labs(x = "", y= "Sessions", title = "Total number of sessions", subtitle =  "Nov-2016 to March-2019")+
   theme_light()+
-  theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5), legend.position= c(0.8,0.2))
+  theme(plot.title = element_text(hjust = 0.5), 
+        plot.subtitle = element_text(hjust = 0.5), 
+        legend.position= c(0.8,0.2))
 
 graph 

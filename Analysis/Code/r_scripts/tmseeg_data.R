@@ -90,59 +90,59 @@ df_amp<- df_amp %>%
         n100_neg_pre="teps_p2p_n100_negclus_amp_bl_pre",
         n100_pos_post="teps_p2p_n100_posclus_amp_bl_post",
         n100_neg_post="teps_p2p_n100_negclus_amp_bl_post",
-        p60_pos_pre="teps_p2p_p60_posclus_amp_bl_pre")   # trying to rename so can mere with cog_bl and do corr_mat
+        p60_pos_pre="teps_p2p_p60_posclus_amp_bl_pre")   # trying to rename so can merge with cog_bl and do corr_mat
                                                         #not working for some reason
-#merge with cog_bl
-
+#merge with cognitive measures of interest
 corr_df<- COMBINED_COG_PhD %>%
-  select(group, coding_bl,ravlt_t1_bl,teps_p2p_n100_posclus_amp_bl_pre,
+  select(code, group, coding_bl,ravlt_t1_bl,ds_bwd_bl,ravlt_t_bl,
+         ravlt_recognition,
+         teps_p2p_n100_posclus_amp_bl_pre,
          teps_p2p_n100_negclus_amp_bl_pre) 
 
 corr_df$group<- as.factor(corr_df$group)
   
 #rename to make shorter
-corr_df<- rename(corr_df,"n100_posclus_amp_pre"="teps_p2p_n100_posclus_amp_bl_pre", 
-            "n100_negclus_amp_pre"="teps_p2p_n100_negclus_amp_bl_pre")
-
-corr_mat <- cor(corr_df)
-corrplot(corr_mat, method="circle")
+corr_df<- rename(corr_df,c(group="group", coding_bl ="coding_bl", ravlt_t1_bl="ravlt_t1_bl", 
+                           teps_p2p_n100_posclus_amp_bl_pre="n100_pos_amp_pre", 
+                           teps_p2p_n100_negclus_amp_bl_pre="n100_neg_amp_pre"))
 
 #scatterplot with coding and n100 amplitude and line of best fit
 # resource
 #http://www.sthda.com/english/wiki/ggplot2-scatter-plots-quick-start-guide-r-software-and-data-visualization#change-the-point-colorshapesize-automatically
-ggplot(corr_df, aes(x=coding_bl, y=n100_negclus_amp_pre, colour=group)) +
+ggplot(corr_df, aes(x=ravlt_recognition, y=n100_neg_amp_pre, colour=group)) +
   geom_point() +
   geom_smooth(method=lm, se=FALSE, fullrange=TRUE) +
   scale_color_manual(values=c("#999999", "#FFB6C1")) +
   theme_classic()
 
 #for balance here is the pos cluster
-ggplot(corr_df, aes(x=coding_bl, y=n100_posclus_amp_pre, colour=group)) +
+ggplot(corr_df, aes(x=ravlt_recognition, y=n100_pos_amp_pre, colour=group)) +
   geom_point() +
   geom_smooth(method=lm, se=FALSE, fullrange=TRUE) +
   scale_color_manual(values=c("#999999", "#FFB6C1")) +
   theme_classic()
 
-#correlation by group
-ddply(corr_df, .(group),
-      summarise, "corr" = cor(coding_bl, n100_posclus_amp_pre, 
-                              method = "spearman"))
-corr_df %>% 
-  group_by(group) %>%
-  summarize(correlation = cor(coding_bl, n100_posclus_amp_pre)) #this should do what the function
-                                                              # above does but not working.
 # corr.test for all
-cor.test(corr_df$coding_bl, corr_df$n100_posclus_amp_pre) 
-# corr.test by group
-cor.test(formula = ~ coding_bl + n100_negclus_amp_pre,
-         data = corr_df,
-         subset = group == "mtbi") # another way of doing it without the pretty table
+cor.test(corr_df$ravlt_t_bl, corr_df$n100_pos_amp_pre, alternative="less") 
+
+#create df of just mTBI values to run corr on
+mtbi_corr <- corr_df %>%
+  filter(group == "mtbi")
+
+control_corr <- corr_df %>%
+  filter(group == "control")
+
+# corr.test by group individually
+cor.test(formula = ~ coding_bl + n100_neg_amp_pre, alternative = "less",
+        method = "pearson",
+         data = mtbi_corr) # another way of doing it without the pretty table 
+                          # have to change df (mtbi_corr, control_corr)
 
 #correlations returned as a df 
   corr_df %>% 
   nest(-group) %>% 
   mutate(
-    test = map(data, ~ cor.test(.x$coding_bl, .x$n100_negclus_amp_pre)),
+    test = map(data, ~ cor.test(.x$ravlt_recognition, .x$n100_pos_amp_pre, alternative= "less")),
     tidied = map(test, tidy)
   ) %>%
   unnest(tidied, .drop = TRUE) %>%

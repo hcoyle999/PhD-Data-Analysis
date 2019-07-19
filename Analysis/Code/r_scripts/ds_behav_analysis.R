@@ -109,7 +109,7 @@ load_ds_behav <- function(filename) {
  save(ds_df_narrow, file="~/Documents/PHD-Data-Analysis/PHD-Data-Analysis/Analysis/Data/ds_df_narrow.Rdata")
  
  load("~/Documents/PHD-Data-Analysis/PHD-Data-Analysis/Analysis/Data/ds_df_wide.Rdata")
- 
+ load("~/Documents/PHD-Data-Analysis/PHD-Data-Analysis/Analysis/Data/ds_df_narrow.Rdata")
  # ---- Plotting ----
 
  #scatter plot of bl_pre and bl_post across groups
@@ -232,10 +232,12 @@ Pre_Post %>%
 
   # http://www.sthda.com/english/wiki/two-way-anova-test-in-r
    # unbalanced sample sizes ?? 
-   
   
-   ## Looking at data sample only included in ERP analyses (excluded  = 008, 009, 015, 017, 101, 103, 113, 121, 128)
-   ds_df_excluded <-subset(ds_df_wide,!id %in% c(8,9,15,17, 101,103,113,121,128))
+    ## ---- Data only in ERP analysis ----
+  
+   ## Looking at data sample only included in ERP analyses (excluded  = 008, 009, 015, 017, 101, 103, 113, 121, 125, 128)
+   ds_df_excluded <-subset(ds_df_wide,!id %in% c(8,9,15,17,101,103,113,121,125,128)) #should be a total of 46 participants 
+                                                                                    # 23 controls, 23 mTBI
 
    #calculate descriptives table
    ds_descriptives <- ds_df_excluded %>%
@@ -264,16 +266,6 @@ Pre_Post %>%
      normality() %>%
      filter(p_value < 0.05)
    
-   i %>% 
-     group_by(group, timepoint) %>% 
-     do(tidy(shapiro.test(.$value)))
-   
-   interaction.plot(i$timepoint, i$group, i$value) #interaction plot
-   interaction.plot(i$group, i$timepoint, i$value) 
-   
-   shapiro.test(ds_df_excluded$bl_pre) #normal
-   shapiro.test(ds_df_excluded$bl_post) #non normal
-   
    # Q1 - Is there are difference between Pre and Post conditions for both groups
    # Compare mean Pre and Post across whole sample
    
@@ -282,13 +274,11 @@ Pre_Post %>%
    wilcox.test(ds_df_excluded$bl_pre, ds_df_excluded$bl_post, paired = TRUE, alternative = "two.sided") 
                                                                       #non normal data analysis
                                                                       #p=0.0063
-
    #means of pre vs post condiiton (when not split by group)
    mean(ds_df_excluded$bl_pre) #mean= 9.23
    mean(ds_df_excluded$bl_post)# mean=9.829
    
    #A = No, means are not sig different 
-   
    
    # Compare group means Pre and Post across whole sample
    summary_df_mean<- ds_df_excluded %>% 
@@ -335,7 +325,7 @@ Pre_Post %>%
    
    #A. No, not significant
    
-   # Run two way ANOVA
+   # Run ANOVA
    
    # for comparing groups analysis
    # get data into correct format
@@ -368,7 +358,8 @@ Pre_Post %>%
    leveneTest(value ~ timepoint*group, data = i) #homogeneity of variance not violated
    
    ggplot(i, aes(x=timepoint, y=value, color=group)) + 
-     geom_boxplot()
+     geom_boxplot()+
+     scale_fill_manual(values=c("#999999", "#FFB6C1"))
    
    # non parametric altnerative
    kruskal.test(value ~ group, data = i)
