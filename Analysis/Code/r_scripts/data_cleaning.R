@@ -55,6 +55,16 @@ colnames(COMBINED_COG_PhD)[colnames(COMBINED_COG_PhD) == 'ss_total_t1'] <- 'ds_t
 colnames(COMBINED_COG_PhD)[colnames(COMBINED_COG_PhD) == 'intials'] <- 'initals'
 colnames(COMBINED_COG_PhD)[colnames(COMBINED_COG_PhD) == 'rpq_10_mtbi'] <- 'rpq_10_mtbi_t1'
 
+# add categorical variable for RPQ score
+COMBINED_COG_PhD %>%
+  filter(group=="mtbi") %>%
+  select(rpq_16_bl) %>%
+  mutate(rpq_cat = case_when(`rpq_16_bl` >= 49 ~ "very severe",
+                             `rpq_16_bl` >= 33 ~ "severe",
+                             `rpq_16_bl` >= 17~ "moderate",
+                             `rpq_16_bl` >= 1 ~ "mild",
+                             `rpq_16_bl` <= 0 ~ "nil")
+         %>% as.factor)
 #attach to database
 attach(COMBINED_COG_PhD)
 

@@ -39,6 +39,8 @@ outlierKD <- function(dt, var) {
 #can do manually for each varaiable
 outlierKD(cog_data_bl, tma_bl)
 
+outlierKD(teps_p2p, teps_p2p_n100_negclus_amp_bl_pre)
+
 var_names<-dput(names(cog_data_BL))  ## all the variables that outliers need to be checked for
 #"tma_bl", "tmb_bl", "ravlt_t1_bl", "ravl_t2_bl", 
 #"ravlt_t3_bl", "ravlt_t4_bl", "ravlt_t5_bl", "ravlt_t_bl", "ravlt_a6a5_bl", 

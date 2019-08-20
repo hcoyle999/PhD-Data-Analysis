@@ -127,4 +127,171 @@ boxplot(sf36_rphys_bl~group, varwidth=TRUE,boxwex= 0.5,main="Role Physical Funct
 boxplot(sf36_sf_bl~group, varwidth=TRUE,boxwex= 0.5,main="Social Functioning",names=c("control","mTBI"),ylab="Symptom Severity",xlab="Baseline",col=c("light grey","light pink"))
 
 
+#plotting more generally
 
+glimpse(clin_data_bl)
+
+clin_data_bl %>%
+  ggplot(aes(x=)) # up to 33 mins into video. facet grid by sex is interesting. 
+
+#Publication ready plot
+
+#make summary df for HADS data
+library(Rmisc)
+library(ggpubr)
+
+  hads_summary<- clin_data_bl %>%
+       group_by(group) %>%
+         select(hads_anxiety_bl, hads_depression_bl, hads_total_bl) %>%
+         set_colnames(c("group","Anxiety", "Depression", "Total_Score")) %>%
+         gather(key="measure", value= "symptom_score", -group, na.rm=TRUE) %>%
+         summarySE(measurevar="symptom_score", groupvars=c("group","measure"))
+  
+  hads_graph<- ggplot(hads_summary, aes(x=measure, y=symptom_score, fill=group)) + 
+    geom_bar(position=position_dodge(), stat="identity") +
+    geom_errorbar(aes(ymin=symptom_score-se, ymax=symptom_score+se),
+                  width=.2,                    # Width of the error bars
+                  position=position_dodge(.9))+
+    #xlab("Mood Measure") +
+    ylab("Symptom Severity") +
+    ggtitle("Hospital Anxiety and Depression Scale (HADS)") +
+    theme_light() +
+    scale_fill_manual(values=c("#999999", "#FFB6C1")) +
+    theme(plot.title = element_text(hjust = 0.5),
+          plot.subtitle = element_text(hjust = 0.5),
+          axis.title.x=element_blank(),
+          legend.position = "none") 
+  
+  hads_graph + ylim(0,13) # make limit bigger so can fit 
+    
+  # save plot in Figures folder
+  setwd(here)
+  setwd("./Analysis/Figures")
+  ggsave("hads_plot.png")
+  
+  
+  #make summary df for Fatigue data
+  library(Rmisc)
+  library(ggsignif)
+  mfi_summary<- clin_data_bl %>%
+    group_by(group) %>%
+    select(mfi_gf_bl, mfi_mf_bl, mfi_pf_bl, mfi_ra_bl, mfi_rm_bl) %>%
+    set_colnames(c("group","General Fatigue","Mental Fatigue", "Physical Fatigue", "Reduced Activity", 
+                   "Reduced Motivation")) %>%
+    gather(key="measure", value= "symptom_score", -group, na.rm=TRUE) %>%
+    summarySE(measurevar="symptom_score", groupvars=c("group","measure"))
+  
+  mfi_graph<- ggplot(mfi_summary, aes(x=measure, y=symptom_score, fill=group)) + 
+    geom_bar(position=position_dodge(), stat="identity") +
+    geom_errorbar(aes(ymin=symptom_score-se, ymax=symptom_score+se),
+                  width=.2,                    # Width of the error bars
+                  position=position_dodge(.9))+
+    #xlab("Fatigue Dimension") +
+    ylab("Symptom Severity") +
+    ggtitle("Multidimensional Fatigue Inventory\n (MFI)") +
+    theme_light() +
+    scale_fill_manual(values=c("#999999", "#FFB6C1")) +
+    theme(plot.title = element_text(hjust = 0.5), 
+          plot.subtitle = element_text(hjust = 0.5),
+          axis.title.x=element_blank()) 
+   
+    mfi_graph + ylim(0,14)
+  # save plot in Figures folder
+  setwd(here)
+  setwd("./Analysis/Figures")
+  ggsave("mfi_plot.png")
+  
+  rpq_summary<- clin_data_bl %>%
+    group_by(group) %>%
+    select(rpq_13_bl, rpq_3_bl, rpq_16_bl) %>%
+    set_colnames(c("group","RPQ 3","RPQ 13", "RPQ Total")) %>%
+    gather(key="measure", value= "symptom_score", -group, na.rm=TRUE) %>%
+    summarySE(measurevar="symptom_score", groupvars=c("group","measure"))
+  
+  rpq_graph<- rpq_summary %>%
+    mutate(measure=factor(measure, labels =c("RPQ 3","RPQ 13", "RPQ Total"))) %>%
+    ggplot(aes(x=measure, y=symptom_score, fill=group)) + 
+    geom_bar(position=position_dodge(), stat="identity") +
+    geom_errorbar(aes(ymin=symptom_score-se, ymax=symptom_score+se),
+                  width=.2,                    # Width of the error bars
+                  position=position_dodge(.9))+
+    #xlab("mTBI symptom measure") +
+    ylab("Symptom Severity") +
+    ggtitle("Rivermead Post Concussion\n Questionnaire (RPQ)") +
+    theme_light() +
+    scale_fill_manual(values=c("#999999", "#FFB6C1")) +
+    theme(plot.title = element_text(hjust = 0.5),
+          plot.subtitle = element_text(hjust = 0.5),
+          axis.title.x=element_blank(),
+          legend.position = "none")
+    
+    rpq_graph + ylim(0,19) # make limit bigger so can fit 
+  
+    # save plot in Figures folder
+    setwd(here)
+    setwd("./Analysis/Figures")
+    ggsave("rpq_plot.png")
+    
+    #make publication ready plot
+    library(ggpubr)
+    library("gridExtra")
+    ggarrange(mfi_graph,
+              ggarrange(rpq_graph, hads_graph, 
+                        ncol = 2,
+                        labels=c("B","C")),
+             nrow = 2,
+             labels="A",
+             common.legend = TRUE, legend = "right")
+    
+    ggsave("Clin_Measures_plot_pubvers.jpg")
+             
+    # Are there associations between clinical measure and cognitive factors
+    
+    corr_df_clin<- COMBINED_COG_PhD %>%
+      select(group, code, coding_bl, ravlt_t1_bl, tma_bl, tmb_bl, ds_fwd_bl, ds_bwd_bl,
+             hads_anxiety_bl, hads_depression_bl, rpq_16_bl, mfi_gf_bl, mfi_mf_bl) 
+    
+    corr_df_clin$group<- as.factor(corr_df_clin$group)
+    
+    c<-corr_df_clin %>%
+      select(-group, -code)
+    
+    c_1<- cor(c,use = "complete.obs") # create corr matrix
+    
+    library(Hmisc)
+    library(corrplot)
+    
+    c_2<-rcorr(as.matrix(c),type = c("spearman"))
+    
+    c_2$P #look at p values
+    c_2$r #look at r values
+    
+    #visualise corr strength
+    corrplot(c_1, method="circle")
+    
+    corr_mf_coding<- ggplot(corr_df_clin, aes(x=ds_bwd_bl, y=mfi_mf_bl, colour=group)) +
+      geom_point(shape=17, size= 2)+
+      xlab("Coding (total correct)") +
+      ylab("MFI mental fatigue score") +
+      geom_smooth(method=lm, se=FALSE, fullrange=TRUE) +
+      scale_color_manual(values=c("#999999", "#FFB6C1")) +
+      theme_classic()+
+      theme(legend.title=element_blank(),
+            legend.background = element_rect(colour = 'grey', fill = 'white', linetype='solid'))
+    
+            
+  
+    corr_df_clin$mfi_mf_bl
+    
+    cor.test(formula = ~ ds_bwd_bl + mfi_mf_bl,
+             data = corr_df_clin,
+             subset = group == "mtbi",
+             method= "pearson",
+             alternative= "less") # split by group way of doing it without the pretty table
+    
+    ## unpacking/characterising clinical data in more detail 
+    clin_data_bl %>%
+      select(group,code, rpq_3_bl, rpq_13_bl) %>%
+      filter(group=="mtbi") %>%
+      arrange(rpq_13_bl)
+    

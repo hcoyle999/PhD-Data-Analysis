@@ -123,6 +123,15 @@ loc_table<- COMBINED_COG_PhD %>%
   mutate(LOC = if_else(LOC == "TRUE", "yes", "no"))
 
 
+loc_fig<- loc_table %>%    # figure out how to change NA to unknown in label
+  select(-n) %>%
+  spread(LOC,percent) %>%
+  gather(LOC, percentage) %>%
+  mutate(LOC=factor(LOC, levels=c("yes","no","NA"), labels=c("yes","no","unknown"))) %>%
+  ggplot(aes(x=LOC, y=percentage)) + 
+  geom_bar(position=position_dodge(), stat="identity")
+
+
 # mean and sd loc (minutes)
 library(psych)
 detach("package:dlookr", unload=TRUE) #gets confused beacuse describe function is overruled by dlookr
