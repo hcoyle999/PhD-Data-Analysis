@@ -1,66 +1,32 @@
-% The following line gets rid of anything that might already be open:
 
+%% Resting EEG PreProcessing Script%%
 clear all; close all; clc;
 
-% The following lines sets up an 'array' of strings (sequence of letters). An array is a table where
-% each cell contains the digits or letters within the quotation marks. The
-% array created below is titled 'ID' (which is why 'ID' is on the left hand
-% side of the equals sign). The values in the ID array are referred to
-% later in order to call specific variables, so that the script knows which
-% files to load.
+datadir_1='//Volumes/HOY BACKUP_/TMS_EEG Data/';
+datadir_2='//Volumes/HOY_2/TMS_EEG Data/';
 
-% ftID has a 'P' at the front of the participant number, because field trip
-% (ft) saves files as .mat format, and MATLAB doesn't seem to like files
-% to start with numbers.
+%datadir='//Volumes/HOY_2/TMS_EEG Data';
+%datadir= 'F:\TMS_EEG Data';
+%caploc= 'C:\Users\Public\MATLAB\EEGWORKSPACE\TOOLSHED\eeglab14_1_2b\plugins\dipfit2.3\standard_BESA\standard-10-5-cap385.elp';
 
-% If you go into the MATLAB command window and look in the workspace (usually on the right hand side), you
-% can view the variables and arrays that have been created. This is useful
-% for testing whether you've created the correct array that refers to the
-% correct file/folder. If MATLAB comes up with an error, this is a good way
-% to trouble shoot.
+caploc='/Users/han.coyle/Documents/Data_Analysis/MATLAB/eeglab14_1_1b/plugins/dipfit2.3/standard_BESA/standard-10-5-cap385.elp'; %path containing electrode positions
+%filterfolder ='C:\Program Files\MATLAB\R2015b\toolbox\signal\signal\';
+cd(datadir_1);
+%SETTINGS
+
 eeglab;
-datadir='//Volumes/HOY BACKUP_/TMS_EEG Data/';
 
-
-
-%ID = {'109','110','111','112','116','118','119'};
-%ID = {'101', '102', '103', '104', '105', '106', '107', '108', '109', '110', '111', '112', '113', '114', '115', '116', '117','118','119'};
-ftID = {'P101', 'P102', 'P103', 'P104', 'P105', 'P106', 'P107', 'P108', 'P109', 'P110', 'P111', 'P112', 'P113', 'P114', 'P115', 'P116', 'P117'};
-
-%ID = {'001'};
-ID = {'119'};
-% 001', '002', '003', '004', '005', '006', '007', '008', '009', '010','011', '012', '013')
-%ftID = {'P001', 'P002', 'P003', 'P004', 'P005', 'P006', 'P007', 'P008', 'P009', 'P010', 'P011', 'P012', 'P013', 'P014', 'P015', 'P016', 'P017', 'P018', 'P019', 'P020'};
-
+Tp = {'T2'}; %T1 %T2
+Condition= {'resting'};
 Group = {'Control','TBI'};
-Timepoint = {'T1'};
-% Sesh = {'BL';'T1';'T2'};
-Datatype = {'resting'};
-Condition= {'Pre'};
 
-caploc='/Users/han.coyle/Documents/MATLAB/eeglab14_1_1b/plugins/dipfit2.3/standard_BESA/standard-10-5-cap385.elp'; %path containing electrode positions
 
-inPath = [datadir filesep 'TBI' filesep];
-outPath = [datadir filesep 'Resting_analysis_TBI' filesep]; %where you want to save the data
-
-mkdir(outPath);
-% Below creates variables 'SubjectStart' and 'SubjectFinish', used to
-% define which subjects from the 'ID' variable above will be processed
-% today. For example, SubjectStart=1 and SubjectFinish=1 will allow you to
-% process the first subject listed in the ID variable above. 'nume1(ID);'
-% refers to the end of the ID array, so will allow you to process right
-% through to the last participant listed if you would like. The same is
-% true for ConditionStart and ConditionFinish.
-
-% ADJUST THE SUBJECTSTART AND SUBJECTFINISH VALUES BELOW TO ALLOCATE THE
-% SUBJECT RANGE YOU ARE PROCESSING TODAY
+% ----------editable section  -------%
+SubjectStart=1;
+%SubjectFinish=;
 
 GroupStart=2;
 GroupFinish=2;
-
-SubjectStart=1;
-%SubjectFinish=numel(ID);
-SubjectFinish=1;
 
 TimepointStart=1;
 TimepointFinish=1;
@@ -70,24 +36,33 @@ ConditionFinish=1;
 
 
 for Grp=GroupStart:GroupFinish
-    for Subjects=SubjectStart:SubjectFinish
-        for Tp=TimepointStart:TimepointFinish
+   
+if Grp==1
+% control participants included in analysis (N= 26)
+%ID = {,'024','025','026', '027','028'};
+ID = {'027'} % '001','002','003','004''005','006','009','010','012','013','014','015','021','022','023','024','025','026','027','028'};
+inPath = [datadir_2 filesep Group{1, Grp} filesep];
+outPath = [datadir_2 filesep 'Resting_analysis' filesep 'Resting_analysis_' Group{1, Grp}];
+
+else
+% mtbi participants included in analysis (N= 30)
+%ID = {'120','121','122', '124','127','129','130'};
+%ID= {'101','102','105','107', '109' '110', '111','118','119'}
+ID= {'124'};
+inPath = [datadir_2 filesep Group{1, Grp} filesep];
+outPath = [datadir_2 filesep 'Resting_analysis' filesep 'Resting_analysis_' Group{1, Grp}];
+end
+%ID= {'126'};
+SubjectFinish= numel(ID);
+
+
+    for Subjects=SubjectStart:SubjectFinish 
+        for Time=TimepointStart:TimepointFinish
             for Cond=ConditionStart:ConditionFinish
-        
-        
 
-
-        %%
-        %load data
-        
-        % The below line creates a variable cntname. Make this equal the
-        % location and file name of the file you want to load. Use the
-        % variables created above and embedded in the cntname variable
-        % below to ensure the script can load multiple files while only
-        % running the script once (so you don't have to go back and
-        % re-write the script each time you want to process a new participant).
-        
-        cntname = ['//Volumes/HOY BACKUP_/TMS_EEG Data/' Group{1,Grp} '/' ID{1,Subjects} '/' Timepoint{1,Tp} '/' ID{1,Subjects} '_resting_' Timepoint{1,Tp} '_' Condition{1,Cond} '.cnt'];
+        %load data from parent 'Control' folder
+        cd([inPath ID{1,Subjects} filesep Tp{1,Time}]);
+        cntname = [ID{1,Subjects} '_' Condition{1,Cond} '_' Tp{1,Time} '_Pre' '.cnt'];
         %EEG = pop_loadcnt(cntname, 'dataformat', 'auto', 'keystroke', 'on', 'memmapfile', '');
         %EEG = pop_loadcnt(cntname, 'dataformat', 'auto', 'keystroke', 'off', 'memmapfile', '');
         EEG = pop_loadcnt(cntname , 'dataformat', 'auto', 'memmapfile', '');
@@ -95,26 +70,18 @@ for Grp=GroupStart:GroupFinish
         EEG = pop_chanedit(EEG, 'lookup', caploc);
         EEG = pop_select( EEG,'nochannel',{'FP1' 'FPZ' 'FP2' 'FT7' 'FT8' 'TP7' 'TP8' 'CB1' 'CB2' 'HEOG' 'PO5' 'PO6' 'E2'});
         
-         %The next two lines find where E1 is in the electrode list, and
-         %replaces E1 with SO1 (so that EEGLAB can allocate the correct
-         %location to the electrode)
-        
-%         E1_location= find(ismember({EEG.chanlocs.labels},'E1'));
-%         EEG.chanlocs(1,E1_location).labels='SO1';
-%         
-%         EEG=pop_chanedit(EEG,  'lookup', caploc);
-%         
-%         EEG.allchan=EEG.chanlocs;
-
+  
         %Downsample EEG 
         EEG = pop_resample( EEG, 500);
         EEG = eeg_checkset( EEG );
 %         
         % The lines below saves the .cnt file as a .set file using the
         % EEGLAB command pop_saveset, after defining the variable 'setname'
-        mkdir([outPath filesep ID{1,Subjects} filesep]);
-        %mkdir('//Volumes/HOY BACKUP_/TMS_EEG Data/Resting_analysis_Control');
-        setname = ['//Volumes/HOY BACKUP_/TMS_EEG Data/Resting_analysis_' Group{1,Grp} '/' ID{1,Subjects} '/' ID{1,Subjects} '_resting_' Timepoint{1,Tp} '_' Condition{1,Cond} '_1.set'];
+        %mkdir([outPath filesep ID{1,Subjects} filesep]);
+        cd([outPath filesep ID{1,Subjects} filesep]);
+        %mkdir('//Volumes/HOY_2/TMS_EEG Data/Resting_analysis_Control');
+        setname = [ID{1,Subjects}, '_', Condition{1,Cond}, '_', Tp{1,Time}, '_Pre_1.set'];
+       
         EEG = pop_saveset(EEG, setname);
             end
         end
@@ -124,10 +91,10 @@ end
 
 for Grp=GroupStart:GroupFinish
     for Subjects=SubjectStart:SubjectFinish
-        for Tp=TimepointStart:TimepointFinish
+        for Time=TimepointStart:TimepointFinish
             for Cond=ConditionStart:ConditionFinish
-
-        setname = ['//Volumes/HOY BACKUP_/TMS_EEG Data/Resting_analysis_' Group{1,Grp} '/' ID{1,Subjects} '/' ID{1,Subjects} '_resting_' Timepoint{1,Tp} '_' Condition{1,Cond} '_1.set'];
+        cd([outPath filesep ID{1,Subjects} filesep]);
+        setname = [ID{1,Subjects} '_' Condition{1,Cond} '_' Tp{1,Time} '_Pre_1.set'];
         EEG = pop_loadset(setname);
 %         
 % % Filtering:
@@ -154,7 +121,7 @@ for Grp=GroupStart:GroupFinish
         dir= pwd;
                                % go to BUTTER 
     
-        cd('/Users/han.coyle/Documents/MATLAB/');
+        cd('/Users/han.coyle/Documents/Data_Analysis/MATLAB/');
         
         
         %filter the data (second order butterworth filter)
@@ -197,11 +164,13 @@ EEG=eeg_regepochs(EEG,'recurrence',2,'limits',[-1 1],'rmbase',[NaN], 'extractepo
 
 [ALLEEG EEG CURRENTSET] = eeg_store(ALLEEG, EEG, CURRENTSET);
 EEG = eeg_checkset( EEG );
+     
 %close all;
 
 %% EYE CODING 
 here= find([EEG.event.urevent]==1);     
          
+
          % epoch the resting data into two second epochs (the two numbers in brackets), 
          % 2 seconds apart (the first number), 
          % and correct to the full epoch baseline (the final number
@@ -262,18 +231,20 @@ EEG = eeg_checkset( EEG );
 %                 end
 %             end
 %         end
-mkdir('//Volumes/HOY BACKUP_/TMS_EEG Data/Resting_analysis_TBI');
-setname = ['//Volumes/HOY BACKUP_/TMS_EEG Data/Resting_analysis_' Group{1,Grp} '/' ID{1,Subjects} '/' ID{1,Subjects} '_resting_' Timepoint{1,Tp} '_' Condition{1,Cond} '_2.set'];
-            end
-        end
-    end
-end
+cd([outPath filesep ID{1,Subjects} filesep]);
+setname = [ID{1,Subjects} '_' Condition{1,Cond} '_' Tp{1,Time} '_Pre_2.set'];
 
 EEG = pop_epoch( EEG, {  'ec'  'eo'  }, [-1  1], 'newname', setname, 'epochinfo', 'yes');
 [ALLEEG EEG CURRENTSET] = eeg_store(ALLEEG, EEG, CURRENTSET);
         EEG = eeg_checkset( EEG );
         
          EEG = pop_saveset(EEG, setname);
+
+          end
+        end
+    end
+end
+
 eeglab
 clear EEG;
 clear ALLEEG;
@@ -281,11 +252,14 @@ eeglab;
 
 for Grp=GroupStart:GroupFinish
     for Subjects=SubjectStart:SubjectFinish
-        for Tp=TimepointStart:TimepointFinish
+        for Time=TimepointStart:TimepointFinish
             for Cond=ConditionStart:ConditionFinish
 
-        setname = ['//Volumes/HOY BACKUP_/TMS_EEG Data/Resting_analysis_' Group{1,Grp} '/' ID{1,Subjects} '/' ID{1,Subjects} '_resting_' Timepoint{1,Tp} '_' Condition{1,Cond} '_2.set'];
-        EEG = pop_loadset(setname);
+      cd([outPath filesep ID{1,Subjects} filesep]);
+      setname = [ID{1,Subjects} '_' Condition{1,Cond} '_' Tp{1,Time} '_Pre_2.set'];
+
+
+       EEG = pop_loadset(setname);
         
 
         
@@ -406,14 +380,9 @@ for Grp=GroupStart:GroupFinish
         EEG.badelectrodeskurt=mean(EEG.reject.rejkurtE,2);
         EEG.badelectrodesfreq=mean(EEG.reject.rejfreqE,2);
        
-               
-       
-          x=unique([find(EEG.badelectrodeskurt>0.03)]);
-
-
-        
-        
-        
+              
+        x=unique([find(EEG.badelectrodeskurt>0.03)]);
+          
         xtransposed=transpose(x);
         
         FTdata = eeglab2fieldtrip(EEG, 'preprocessing', 'coord_transform');
@@ -493,15 +462,21 @@ EEG=pop_rejepoch(EEG,EEG.BadTr,0);
 
 EEG.ProcessingAndBehaviourData.badtrialauto=EEG.BadTr;
 
-        %mkdir('//Volumes/HOY BACKUP_/TMS_EEG Data/Resting_analysis_TBI');
-        AutomaticRejectionsetname = ['//Volumes/HOY BACKUP_/TMS_EEG Data/Resting_analysis_' Group{1,Grp} '/' ID{1,Subjects} '/' ID{1,Subjects} '_resting_' Timepoint{1,Tp} '_' Condition{1,Cond} '_3.set'];
-        EEG = pop_saveset(EEG, AutomaticRejectionsetname);
+ %where you want to save the data
+      cd([outPath filesep ID{1,Subjects} filesep]);
+      AutomaticRejectionsetname = [ID{1,Subjects} '_' Condition{1,Cond} '_' Tp{1,Time} '_Pre_3.set'];
+       
+      EEG = pop_saveset(EEG, AutomaticRejectionsetname);
         
-    end
-    
+            end
         end
     end
 end
+
+
+
+
+
 
 
         

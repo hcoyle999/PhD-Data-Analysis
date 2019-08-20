@@ -9,37 +9,41 @@ clear all; close all;
 %  Date modified: 11-Jun-2014
 
 %% Update Matlab search path
+datadir='F:\TMS_EEG Data';
+%WheresMyScript= [datadir filesep 'SP_analysis_Statistics'];
+WheresMyScript='//Volumes/HOY_2/TMS_EEG Data/Resting_analysis/Resting_analysis_Statistics/';
+ addpath(WheresMyScript);
 
-WheresMyScript='//Volumes/HOY BACKUP_/TMS_EEG Data/Resting_analysis_Statistics/';
- addpath(genpath(WheresMyScript));
-WheresNBS='/Users/han.coyle/Documents/MATLAB/eeglab14_1_1b/plugins/NBS1.2';
- addpath(genpath(WheresNBS));
+%WheresNBS='C:\Users\Public\MATLAB\EEGWORKSPACE\TOOLSHED\Connectivity_NBS\NBS1.2'; 
+WheresNBS='//Users/han.coyle/Documents/Data_Analysis/MATLAB/eeglab14_1_1b/plugins/NBS1.2';
+ addpath(WheresNBS);
 % WheresSPM='C:\Program Files\MATLAB\spm8';
 %  addpath(genpath(WheresSPM));
-% WheresBNV='C:\Program Files\MATLAB\BrainNetViewer';
-%  addpath(genpath(WheresBNV));
+WheresBNV='//Users/han.coyle/Documents/Data_Analysis/MATLAB/eeglab14_1_1b/plugins/BrainNetViewer_20171031'
+%WheresBNV='C:\Program Files\MATLAB\BrainNetViewer';
+addpath(genpath(WheresBNV));
 
 %%
-Bandwidth={'theta','gamma','alpha'};
+Bandwidth={'theta','gamma','alpha','beta'};
 TimeCondition={'BL'};
-condition = {'eo', 'ec' , 'average'};
+condition = {'eo', 'ec' };
 
-Band=1;
+Band=4;
 Time=1;
-Cond=1; 
-SourceDir= ['/Volumes/HOY BACKUP_/TMS_EEG Data/Resting_analysis_Statistics']; 
+Cond=2; 
+SourceDir= ['/Volumes/HOY_2/TMS_EEG Data/Resting_analysis/Resting_analysis_Statistics']; 
 
-WorkDir=['/Volumes/HOY BACKUP_/TMS_EEG Data/Resting_analysis_Statistics' filesep [condition{1,Cond} ,'_',(Bandwidth{1,Band}),'_', (TimeCondition{1,Time})],  filesep];
+WorkDir=['/Volumes/HOY_2/TMS_EEG Data/Resting_analysis/Resting_analysis_Statistics' filesep [condition{1,Cond} ,'_',(Bandwidth{1,Band}),'_', (TimeCondition{1,Time})],  filesep];
 mkdir(WorkDir);
 
 % One-tailed probability value (alpha)
 PVal=0.025;% two-tailed probability value (alpha)
 % Degrees of freedom.
-% Unpaired t test, df=(n1+n2)-2.
-% Paired t test, df=n-1, where n is the number of observations.
-DoF=34;
+% Unpaired t test, between groups, df=(n1+n2)-2.
+% Paired t test, within groups, df=n-1, where n is the number of observations.
+DoF=54;
 % One-tailed critical value
-CritVal=icdf('t',(1-PVal),DoF); % Do not touch
+CritVal=icdf('t',(1-PVal),DoF); % Do not touch 
 PValStr=strrep(num2str(PVal),'0.',''); % Do not touch
 DoFStr=num2str(DoF); % Do not touch
 Outname=sprintf('NBSoutput_%s_%s.mat',PValStr,DoFStr); % Do not touch
@@ -69,6 +73,8 @@ UI.design.ui=[SourceDir,filesep,'DesignMatrix.mat'];
 % Contrast: 1 x p numeric array specifying contrast, where p is the number
 % of independent variables in the GLM.
 % Must be specified as a valid Matlab expression for a 1 x p array.
+    %%looking for a decrease in connectivity in my mtbi sample??%% i.e
+    %%group 2 > group 1
 UI.contrast.ui='[-1 1]';
 
 %% Data
@@ -92,7 +98,7 @@ UI.matrices.ui=[SourceDir,filesep,condition{Cond},'_',Bandwidth{Band}, '_NNM.mat
 % 1. Valid Matlab expression for an N x 3 array.
 % 2. Text file containing numeric data arranged into a N rows and 3 columns.
 % 3. A binary Matlab file (.mat) storing an N x 3 numeric array.
-UI.node_coor.ui=[SourceDir,filesep,'COG_3.mat'];
+UI.node_coor.ui=[SourceDir,filesep,'COG_50.mat'];
 
 % Node Labels [optional]: N x 1 cell array of strings providing node
 % labels, where N is the number of nodes.
@@ -100,7 +106,7 @@ UI.node_coor.ui=[SourceDir,filesep,'COG_3.mat'];
 % 1. Valid Matlab expression for an N x 1 cell array of strings.
 % 2. Text file containing data arranged into N rows.
 % 3. A binary Matlab file (.mat) storing an N x 1 cell array of strings.
-UI.node_label.ui=[SourceDir,filesep,'LABELS_FORMATTED.mat'];
+UI.node_label.ui=[SourceDir,filesep,'LABELS_FORMATTED_50.mat'];
 
 %% Advanced Settings
 
@@ -124,6 +130,7 @@ UI.size.ui='Extent';
  UI.exchange.ui='';
 %UI.exchange.ui=load('exchangeBlocks.mat');
 
+cd(WheresNBS);
 %% Run NBSrun
 NBSrun(UI,[])
 
@@ -149,6 +156,7 @@ save(Output,'nbs');
 % for each significant network.
 nbs.NBS
 clear ans;
+
 
 %% NBSview Visualisation for Significant Network
 NSigNet=nbs.NBS.n;
@@ -272,7 +280,7 @@ if NSigNet>0
         BNVNodeFilePath=NodeFileOutPath;
 %         BNVEdgeFilePath=BinEdgeFileOutPath;
         BNVEdgeFilePath=WeiEdgeFileOutPath;
-%         BNVOptionsName='BrainNetOptions_full.mat';
+        BNVOptionsName='BrainNetOptions_full.mat';
 %         BNVOptionsPath=sprintf('%s%s%s',WheresMyScript,filesep,BNVOptionsName);
         BNVOptionsPath=sprintf('%s%s%s',WheresBNV,filesep,BNVOptionsName);
         BNVOutPath=sprintf('%s%snetwork%dbnv.jpg',WorkDir,filesep,SigNet);

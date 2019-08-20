@@ -9,18 +9,18 @@ clear; close all; clc;
 
 %Settings for file to load (you will need to change this to suit your
 %files)
-path = '/Volumes/HOY BACKUP_/TMS_EEG Data/Resting_analysis_Statistics/eo_theta_BL';
+path = '/Volumes/HOY_2/TMS_EEG Data/Resting_analysis/Resting_analysis_Statistics/eo_beta_BL';
 group = {'Control';'TBI'};
 pval = {'025'};
-df = {'33'};
+df = {'54'};
 cond = {'high'};
-freq = {'theta'};
-freqN = {'Theta'};
+freq = {'beta'};
+freqN = {'beta'};
 timeRange = [0,1];
 contrast = {'AB'};
 i = 1;
 
-Bandwidth={'theta','gamma','alpha'};
+Bandwidth={'theta','gamma','alpha','beta'};
 TimeCondition={'BL'};
 
 %Load NBS output matrix
@@ -43,7 +43,7 @@ set='.set';
 mat='.mat';
 
 
-cd('//Volumes/HOY BACKUP_/TMS_EEG Data/Resting_analysis_Statistics/');
+cd('//Volumes/HOY_2/TMS_EEG Data/Resting_analysis/Resting_analysis_Statistics/');
 
 %addpath ('C:\Program Files\MATLAB\fieldtrip-20140626');
 ft_defaults;
@@ -54,14 +54,14 @@ ft_defaults;
 % gamma
 
 % first limit to frequency windows of interest:
-for Band=1;
+for Band=4;
 for Time=1;    
-%wPLIname = 'S:\R-MNHS-MAPrc\Neil-Bailey\Predict Sternberg\Predict Study\STERN\10-Connectivity-Fourier-Minus-Mastoids\connectivityfinal.mat';
-wPLIname = '//Volumes/HOY BACKUP_/TMS_EEG Data/Resting_analysis_Control/connectivitymeanALL_eo.mat';
+
+wPLIname = '//Volumes/HOY_2/TMS_EEG Data/Resting_analysis/Resting_analysis_Control/connectivitymeanALL_eo.mat';
 load(wPLIname);
 HC=connectivitymeanALL.(Bandwidth{1,Band}).(TimeCondition{1,Time});
 
-wPLIname = '//Volumes/HOY BACKUP_/TMS_EEG Data/Resting_analysis_TBI/connectivitymeanALL_eo.mat';
+wPLIname = '//Volumes/HOY_2/TMS_EEG Data/Resting_analysis/Resting_analysis_TBI/connectivitymeanALL_eo.mat';
 load(wPLIname);
 TBI=connectivitymeanALL.(Bandwidth{1,Band}).(TimeCondition{1,Time});
 
