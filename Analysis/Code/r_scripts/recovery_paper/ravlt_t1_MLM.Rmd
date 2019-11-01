@@ -1,0 +1,334 @@
+---
+title: "Alpha_power_MLM"
+author: "Hannah Coyle"
+date: "18/10/2019"
+output: html_document
+---
+
+```{r global options, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figures/',
+                      echo=FALSE, warning=FALSE, message=FALSE)
+
+knitr::opts_knit$set(progress = TRUE, verbose = TRUE)
+```
+
+```{r load libaries, include = FALSE}
+
+library(tidyverse)
+library(knitr)
+library(tidyverse)
+library(Rmisc)
+library(lme4)
+library(sjPlot)
+library(dotwhisker)
+library(broom)
+library(car)
+library(e1071)
+library(ggeffects)
+library(magrittr)
+library(sjPlot)
+library(sjmisc)
+library(sjlabelled)
+library(lme4)
+```
+
+
+# Load data frame with mean alpha power from ROI electrodes across BL, T1, T2 for controls and mTBI
+```{r set up file}
+here<-"~/Documents/PHD-Data-Analysis/PHD-Data-Analysis"
+setwd(here) #main path/homedirectory
+setwd("./Analysis/Data")
+load("COMBINED_COG_PhD.Rdata")
+#exclude participants 
+COMBINED_COG_PhD <-subset(COMBINED_COG_PhD,!code %in% c(7, 16))
+```
+
+
+# Visualise data as bar and line graphs
+```{r Visualise ravlt t1 perfomarnace longitudinally}
+
+ravlt_df<-COMBINED_COG_PhD %>%
+  dplyr::select(code, group, ravlt_t1_bl, ravlt_t1_t1, ravlt_t1_t2, wtar) 
+
+
+ravlt_long <- ravlt_df %>%
+  gather(key = measure, value = mean_score, - group, -code, - wtar) %>%
+  separate(measure, c("measure", "domain", "timepoint")) %>%
+  mutate_if(is.character,funs(factor(.))) %>%
+  dplyr::select(-domain) 
+  
+ravlt_summary <- ravlt_long %>%
+  group_by(group, timepoint) %>%
+  summarySE(measurevar="mean_score", groupvars=c("group", "measure", "timepoint"), na.rm= TRUE)
+
+
+# quick graph as a bar graph
+ravlt_bar <- ravlt_summary %>%
+  mutate(measure=factor(measure, labels ="ravlt")) %>%
+  ggplot(aes(x=measure, y=mean_score, fill=group)) + 
+  geom_bar(position=position_dodge(), stat="identity") +
+  geom_errorbar(aes(ymin=mean_score-se, ymax=mean_score+se),
+                width=.2,                    # Width of the error bars
+                position=position_dodge(.9))+
+  ylab("Total words recalled") +
+  facet_grid(~timepoint)+
+  theme_light() +
+  scale_fill_manual(values=c("deepskyblue1","royalblue4"))+
+  ggtitle("Mean RAVLT score (trial 1)") +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5),
+        axis.title.x=element_blank(),
+        axis.text.x=element_blank())
+
+print(ravlt_bar)
+
+ # quick graph as a line graph
+  
+  gbase<- ravlt_summary %>%
+    ggplot(aes(y= mean_score, x= timepoint, colour=group))+
+    geom_point()  #+ facet_grid(~group)
+    #geom_errorbar(aes(ymin = alpha_power - se, ymax = alpha_power + se),
+                  #width=.2) ## optional SE bars, make graph look messy though
+  
+  
+  gline <- gbase + geom_line() 
+  ravlt_summary$time = as.numeric(ravlt_summary$timepoint)
+  gline <- gline %+% ravlt_summary
+  
+  print(gline + aes(x=time)+
+          scale_x_continuous(breaks=c(1:3), labels=c("BL", "T1", "T2")))
+  
+```
+ Bar graph and line graphs show distribution of means  
+ 
+```{r}
+## plot individual points with means as a bar plot
+base_plot <- ggplot(ravlt_long, aes(x = timepoint, y = mean_score)) +
+  facet_grid(~group) +
+  stat_summary(aes(fill = factor(timepoint)), fun.y = mean, geom = "bar", color = "black", na.rm = TRUE) + 
+  scale_fill_manual(values = c("#66c2a5", "#8da0cb", "#7f66c2")) +  # colorbrewer2.org
+  theme(legend.position = "none")
+# put individual lines on bar graph
+subj_means_plot <- base_plot + 
+  stat_summary(aes(group = code), fun.y = mean,  # means from raw data
+               geom = "point", shape = 19, size = 4, color = "skyblue1") +
+  stat_summary(aes(group = code), fun.y = mean, 
+               geom = "line", size = 1.2, color = "skyblue1")
+
+print(subj_means_plot)
+```
+ Bar graph with individual points shows individual trajectories (and what are likely to be outliers)
+
+
+```{r check normality of outcome measre}
+hist(ravlt_long$mean_score) # a little bit left skewed
+hist(ravlt_long$wtar) # a little bit right skewed
+
+#Try log transforming the outcome variable
+ravlt_long$mean_score_log <-log(ravlt_long$mean_score)
+ravlt_long$wtar_log <-log(ravlt_long$wtar)
+
+hist(ravlt_long$mean_score_log) # more normally distributed- but with gaps
+hist(ravlt_long$wtar_log) # makes it worse- so is it better to leave as is.
+
+```
+
+# Design Mixed Linear Model (ravlt_total_recalled = dependent variable) and visualise coefficient output
+```{r  Mixed Linear Model and Output}
+ravlt_long$code <-factor(ravlt_long$code)
+
+lmer_ravlt<- lmer(mean_score ~ timepoint*group + wtar + (1|code), 
+              data = ravlt_long, na.action=na.exclude) # timepoint fixed, group fixed, participant random                                                           # timepoint*group interaction fixed, id = random
+
+#By default, lme4 assumes that all coefficients associated with the same random-effects term
+#are correlated
+
+lmer_ravlt_log<- lmer(log(mean_score) ~ timepoint*group + wtar + (1|code), 
+              data = ravlt_long, na.action=na.exclude) #REML = FALSE (if want ML esti) 
+
+
+
+lme_ravlt_log_covar<-lme(log(mean_score) ~ timepoint*group + wtar,random= ~1|code, data = ravlt_long, na.action=na.exclude, correlation= corCAR1(), method = "ML") 
+                  # this is specifying the covariance structure, but is using nlme package
+
+summary(lme_ravlt_log) # output summary of model
+  
+  model_ouptut<- tab_model(lmer_ravlt_log, lme_ravlt_log_covar,p.val = "kr", 
+                           p.style = "both", show.stat =TRUE, 
+                           show.df = TRUE)        # output in HTML format
+ 
+  anova(lme_ravlt_log, lme_ravlt_log_1)                                                            
+  
+  # p-values is based on conditional F-tests with                                                                       Kenward-Roger approximation for the degrees of                                                                        freedom
+  print(model_ouptut) #this won't work in markdown (html)
+  
+  
+ 
+  # additional information  (optional)
+  #confint(lmer_alpha) #calculate confidence intervals (2.5% is lower and 97.5% is upper bound)
+  #coef(lmer_alpha) # summary of coefficients for each participants
+  
+  
+```
+
+For model output - will be in a seperate tab
+The marginal R-squared considers only the variance of the fixed effects, while the conditional R-squared
+takes both the fixed and random effects into account.
+  
+  
+
+## Visualise marginal effects
+For MLM with interaction terms, marginal effects are considered easier to interpret than coefficients
+See #https://cran.r-project.org/web/packages/ggeffects/vignettes/introduction_randomeffects.html
+    #https://strengejacke.github.io/sjPlot/articles/plot_interactions.html for vignetttes.
+  
+  
+```{r Visualise marginal effects of model}
+
+  g1<- plot_model(lmer_ravlt, type = "pred", mdrt.values = "meansd") # can change type, "int" automatically plots                                                                          # interaction effects
+
+  print(g1)
+  
+  #another way of visualising same info
+
+  p <- ggpredict(lmer_ravlt, c("group", "timepoint"), type= "fe") # another way of visualising same info as above
+  g2<- plot(p, add.data=FALSE)  # graph predicted values of alpha, change add data to TRUE to see data points
+  
+  print(g2)
+  
+  #The default, type = "fe", means that predictions are on the population-level and do not account 
+  #for the random effect variances. Intervals are confidence intervals for the predicted values.
+
+  #The idea behind the ggpredict function is to compute (and visualize) the relationship between a model predictor
+  #(independent variable) and the model response (dependent variable).
+  
+  #Link below is info on customising plots and table output
+ # https://strengejacke.github.io/sjPlot/articles/custplot.html
+  
+  
+          
+```
+ # Model interpretation
+ https://cran.r-project.org/web/packages/margins/vignettes/TechnicalDetails.pdf
+ 
+ What is the effect of timepoint and group of on ravlt performance?
+  
+  
+  # Check model assumptions/ run diagnositics
+```{r Check assumptions}
+
+plot(lmer_ravlt_log) # normality of residuals
+
+diagnostics<-plot_model(lmer_ravlt, type = "diag")
+
+print(diagnostics)
+
+#Homogeneity of Variance (by statistical testing)
+    # Regression models assume that variance of the residuals is equal across groups.
+ravlt_long$model.res<- residuals(lmer_ravlt) #extracts the residuals and places them in a new column in our original data table
+ravlt_long$model.res.abs <-abs(ravlt_long$model.res) #creates a new column with the absolute value of the residuals
+ravlt_long$model.res.2 <- ravlt_long$model.res.abs^2 #squares the absolute values of the residuals to provide the more robust estimate
+Levene.Model <- lm(model.res.2 ~ group, data=ravlt_long) #ANOVA of the squared residuals
+anova(Levene.Model) #displays the results
+            #  assumption of homoscedasticity not violated !!!
+# the p value is greater than 0.05, we can say that the variance of the residuals is equal and therefore the assumption of homoscedasticity is met - but is close p = 0.07
+
+
+```
+
+
+# B. Assess model fit
+```{r Assess model fit}
+# 5. Assess goodness-of-fit measures: R squared
+cor(ravlt_long$mean_score_log, fitted(lmer(log(mean_score) ~ timepoint*group + (1|code),
+                                  data = ravlt_long, na.action = na.exclude)), use= "complete.obs")^2
+
+# 6. Assess data likelihood: What is the probability that we would
+#observe the data we have given the model (i.e. given the
+                                          #predictors we chose and given the ‘best’ parameter
+                                          #estimates for those predictors).
+summary(lmer_ravlt_log)
+logLik(lmer_ravlt_log) # should always be negative, but closer to 0 is better
+AIC(lmer_ravlt_log) # smaller is better (same with BIC)
+```
+
+
+```{r Exponentiate coefficients from log scale}
+
+coef_st = tidy(lmer_ravlt, effects = "fixed",
+     conf.int = TRUE,
+     conf.method = "profile") # will only work if haven't run with lmerTest (creates a 6th column?)
+# need to exponentiate coefficients for interpretation purposes
+
+# get info on fixed effect of group
+(exp(coef(lmer_ravlt_log)$code["groupmtbi"])- 1) * 100 # 14% decrease in ravlt t1 total score for a 1 unit                                                         increase in group ( e.g mTBI)
+
+(exp(-0.29)- 1) * 100 # lower CI 
+(exp(-0.01)- 1) * 100 # upper CI 
+
+# fixed effect of group on html output
+# no fixed effect of timepoint or interaction effect.
+
+
+
+```
+
+```{r model interpretation}
+#Using Anova from car, we get p-values for the main effects.
+Anova(lmer_ravlt_log, test = "F") # main effect of group not replicated 
+                    #  The function Anova from car produces tables with p-values
+                    # based on Wald tests, 
+library(lmerTest) # will have to re run model 
+
+#post hoc testing with emmeans (though potentially not relevant as no main effect of group or tp)
+emeans_ravlt<-emmeans(lmer_ravlt_log,
+                      specs = pairwise ~ group|timepoint)  #change | to : to look at all comparisons
+
+#These results are all on the model scale, so in this case these are estimated mean log response 
+
+emeans_ravlt$emmeans # get means  for each comparison and CI
+
+emeans_ravlt$contrasts # The second part of the output, called contrasts, contains the comparisons of interest.
+
+emeans_ravlt_back_trans<- emmeans(lmer_ravlt_log, specs = pairwise ~ group|timepoint, type = "response")
+
+ravlt_contrasts <-emeans_ravlt$contrasts %>%
+     rbind() %>% # bonferroni corrected- but for 3 tests ( good to use these)
+     as.data.frame() %>%  #  p values are corrected for multiple comparisons but are in long form
+     mutate(p.value = round(p.value, digits =4)) 
+```
+
+- group effect of mTBI - but only for some p value computations- also model does not seem to fit data very well, only explaining 44.7% of the variance.Log transformation only seems to improve the data a bit..? See a similar pattern of results for log transformed and non for ravlt_t1. Not sure how to report this finding? SHould be a simple main effect of group- but without means always a bit tricky to say where differene lies
+
+```{r see if can improve model}
+library(pbkrtest)
+(fmLarge <- lmer((log(mean_score)) ~ timepoint*group + (1|code) + wtar, data = ravlt_long, na.action = na.exclude))
+
+
+## removing Days
+(fmSmall <- lmer((log(mean_score)) ~ timepoint+ (1|code) + wtar, data = ravlt_long, na.action = na.exclude))
+
+
+anova(fmLarge,fmSmall) # not sig difference
+n<-KRmodcomp(fmLarge,fmSmall)
+
+getKR(n)
+```
+
+
+```{r graph estimated means from model}
+ravlt_graph<-emmip(lmer_ravlt_log, group ~ timepoint, type = "response") + 
+  aes(linetype = group, shape = group) + 
+  scale_color_grey(start=0, end=0) +
+  theme_bw() +
+  labs(y = "RAVLT T1 total",
+       x = " ") +
+   theme(
+    legend.position = "bottom",
+    legend.box.just = "center",
+    legend.margin = margin(0, 0, 0, 0),
+    legend.title = element_blank()
+    )
+```
+
+  

@@ -1,0 +1,448 @@
+---
+title: "MFI_MLM_Analysis"
+author: "Hannah Coyle"
+date: "01/10/2019"
+output:
+  word_document: default
+  html_document: default
+---
+```{r global options, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figures/',
+                      echo=FALSE, warning=FALSE, message=FALSE)
+
+knitr::opts_knit$set(progress = TRUE, verbose = TRUE)
+
+#sjt.df(efc, no.output=TRUE)$knitr
+```
+
+
+```{r setup, include=FALSE, echo= FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(knitr)
+library(tidyverse)
+library(Rmisc)
+library(lme4)
+library(sjPlot)
+library(dotwhisker)
+library(broom)
+library(car)
+library(e1071)
+library(ggeffects)
+library(magrittr)
+library(sjPlot)
+library(sjmisc)
+library(sjlabelled)
+library(lme4)
+library(emmeans)
+
+load("~/Documents/PHD-Data-Analysis/PHD-Data-Analysis/Analysis/Data/COMBINED_COG_PhD.Rdata")
+#source('~/Documents/PHD-Data-Analysis/PHD-Data-Analysis/Analysis/Code/data_cleaning.R') #if data not already clean
+#exclude participants 
+COMBINED_COG_PhD <-subset(COMBINED_COG_PhD,!code %in% c(7, 16))
+```
+*Mixed Linear Models for mean MFI across time and group*
+
+## 1.a. Visualise the data
+```{r create the df, include = FALSE}
+mfi_df <- COMBINED_COG_PhD %>%
+  dplyr::select(starts_with("mfi"), group, code)
+
+## wrangle the data into correct format
+mfi_long<- mfi_df %>% 
+  gather(key   = measure,
+         value = sympt_score,
+         dplyr::ends_with('bl'),
+         dplyr::ends_with('t1'),
+         dplyr::ends_with('t2'))
+
+mfi_long<- mfi_long %>% separate(measure, 
+                c("measure", "domain","timepoint")) %>%
+            mutate_if(is.character,funs(factor(.))) ## make factor
+
+mfi_df_total <- mfi_df %>%
+  mutate(mfi_bl_total = mfi_gf_bl + mfi_pf_bl + mfi_ra_bl + mfi_rm_bl + mfi_mf_bl) %>%
+  mutate(mfi_t1_total = mfi_gf_t1 + mfi_pf_t1 + mfi_ra_t1 + mfi_rm_t1 + mfi_mf_t1) %>%
+  mutate(mfi_t2_total = mfi_gf_t2 + mfi_pf_t2 + mfi_ra_t2 + mfi_rm_t2 + mfi_mf_t2) %>%
+  dplyr::select(group, code, mfi_bl_total, mfi_t1_total,mfi_t2_total) %>%
+  gather(key = measure, value = sympt_score, - group, -code) %>%
+  separate(measure, c("measure", "timepoint", "total")) %>%
+  mutate_if(is.character,funs(factor(.))) %>%
+  dplyr::select(-total)
+  
+```
+# Plot domain scores across time
+```{r plot data over time all domains, echo= FALSE, include= FALSE}
+mfi_long<-mfi_long %>%
+summarySE(measurevar="sympt_score", groupvars=c("group","domain", "timepoint"), na.rm=TRUE)
+
+# create graph for all domains (but not total)
+mfi_long_all <- mfi_long %>%
+  filter(!domain== "total")
+
+gbase <-ggplot(mfi_long_all, aes(y=sympt_score, colour=domain)) + 
+  geom_point() +
+  facet_grid(~group) 
+  #geom_errorbar(aes(ymin = sympt_score - se, ymax = sympt_score + se),
+                #width=.2) ## optional SE bars, make graph look messy though
+
+gline <- gbase + geom_line() 
+#print(gline + aes(x=timepoint)) # lines don't connect
+
+# change time to numeric
+mfi_long_all$time = as.numeric(mfi_long_all$timepoint)
+unique(mfi_long_all$time)
+
+#add to graph 
+gline <- gline %+% mfi_long_all
+
+```
+
+```{r plot graph of all domains, echo=FALSE}
+#plot graph
+print(gline + aes(x=time)+
+        ylab("MFI Domain Scores") +
+        ggtitle("Total fatigue symptoms by group, timepoint & domain") +
+        scale_x_continuous(breaks=c(1:3), labels=c("BL", "T1", "T2"))) +
+   theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5),
+        axis.title.x=element_blank(),
+        legend.position= c(0.9,0.9),
+        legend.title = element_blank(),
+        legend.background = element_rect(colour = 'grey', fill = 'white', linetype='solid'))
+
+```
+
+```{r get data for total MFI, echo= FALSE, include= FALSE}
+#plot graph for total score
+#create summary stats and plot
+mfi_df_total_sum<- mfi_df_total %>%
+  summarySE(measurevar="sympt_score", groupvars=c("group", "timepoint"), na.rm=TRUE)
+
+#pd <- position_dodge(0.3)
+gbase <- ggplot(mfi_df_total_sum, aes(y=sympt_score, colour=group)) + 
+  geom_point(aes(shape=group), size = 3) +
+  geom_errorbar(aes(ymin = sympt_score - se, ymax = sympt_score + se),
+                  width=0.3,
+                  size=0.5) +
+  ylim(20, 70)
+
+gline <- gbase + geom_line() 
+print(gline + aes(x=timepoint)) # lines don't connect
+
+# change time to numeric
+mfi_df_total_sum$time = as.numeric(mfi_df_total_sum$timepoint)
+unique(mfi_df_total_sum$time)
+
+#add to graph 
+gline <- gline %+% mfi_df_total_sum
+
+```
+
+```{r plot graph, echo= FALSE, include= TRUE}
+#plot graph
+
+print(gline + aes(x=time)+
+        ylab("MFI Total Score") +
+        ggtitle("Total fatigue symptoms by group and timepoint") +
+        scale_x_continuous(breaks=c(1:3), labels=c("BL", "T1", "T2"))) 
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5),
+        axis.title.x=element_blank(),
+        legend.position= c(0.9,0.9),
+        legend.title = element_blank(),
+        legend.background = element_rect(colour = 'grey', fill = 'white', linetype='solid'))
+
+```
+
+```{r plot bar graph, echo= FALSE, message=FALSE, warning=FALSE}
+
+## plot individual points with means as a bar plot
+base_plot <- ggplot(mfi_df_total, aes(x = timepoint, y = sympt_score)) +
+  facet_grid(~group) +
+  stat_summary(aes(fill = factor(timepoint)), fun.y = mean, geom = "bar", color = "black", na.rm = TRUE) + 
+  scale_fill_manual(values = c("#66c2a5", "#8da0cb", "#7f66c2")) +  # colorbrewer2.org
+  theme(legend.position = "none")
+# put individual lines on bar graph
+subj_means_plot <- base_plot + 
+  stat_summary(aes(group = code), fun.y = mean,  # means from raw data
+               geom = "point", shape = 19, size = 4, color = "skyblue1") +
+  stat_summary(aes(group = code), fun.y = mean, 
+               geom = "line", size = 1.2, color = "skyblue1")
+
+print(subj_means_plot)
+
+```
+Bar graph plots group means and individual scores across BL, T1 and T2
+ 
+1. Check the distribution of outcome measure 
+
+```{r check outcome variable, include = TRUE}
+
+hist(mfi_df_total$sympt_score) # right skewed 
+
+#Try log transforming the outcome variable
+mfi_df_total$sympt_score_log <-log(mfi_df_total$sympt_score)
+
+hist(mfi_df_total$sympt_score_log) # distribution has improved
+```
+
+2. Create MLM (timepoint fixed, group fixed, timepoint*group interaction fixed and participant ID random)
+```{r create MLM, include= TRUE, echo=TRUE}
+
+lmer_mfi<- lmer(sympt_score ~ timepoint*group + (1|code),  # model without log transform for comparison
+                data = mfi_df_total, 
+                na.action = na.exclude)
+
+lmer_mfi_log<- lmer(log(sympt_score)~ timepoint*group + (1|code), 
+                    data = mfi_df_total,
+                    na.action = na.exclude)  
+
+lme_mfi_log <- lme(log(sympt_score)~ timepoint*group,
+                    data = mfi_df_total,
+                    random = ~ 1|code,
+                    method= "REML",
+                    correlation= corAR1(0, form= ~ 1| code),
+                    na.action = na.exclude)
+
+mfi_df_total$code <- factor(mfi_df_total$code)
+
+summary(lmer_mfi)
+summary(lmer_mfi_log)
+summary(lme_mfi_log)
+
+# extract coefficients 
+# coef(lmer_mfi) # have global intercept and mTBI intercept (much better representation of the data)
+
+plot_model(lmer_mfi_log, type = "int",
+           mdrt.values = "meansd",
+           terms = c("timepoint","group")) #A convenient way to automatically plot                                                                       interactions is type = "int", which scans the model                                                            formula for interaction terms and then uses these as                                                          terms-argument.
+tab_model(
+  lmer_mfi_log, lme_mfi_log,
+  show.ci = FALSE, 
+  show.se = TRUE, 
+  auto.label = FALSE, 
+  string.se = "SE",
+  show.icc = FALSE,
+  dv.labels = c("LMER Model", "LME MFI Model")) 
+# compare models in table format
+# the marginal R-squared considers only the variance of the fixed effects, while the conditional R-squared takes both the fixed and random effects into account.
+
+```
+
+
+3. Evaluate your model
+Some resources for evaluating and reporting the model
+https://wiki.bcs.rochester.edu/HlpLab/StatsCourses?action=AttachFile&do=get&target=Groningen11.pdf
+https://link.springer.com/content/pdf/10.3758%2Fs13428-016-0809-y.pdf
+https://www.statmethods.net/stats/rdiagnostics.html
+
+A. Check Model Assumptions
+
+```{r Assumption checkings, include = TRUE}
+
+plot(lmer_mfi_log) # normality of residuals
+
+diagnostics<-plot_model(lmer_mfi_log, type = "diag")
+
+print(diagnostics)
+
+# check homogeneity of variance (by statistical testing)
+# regression models assume that variance of the residuals is equal across groups.
+mfi_df_total$model.res<- residuals(lmer_mfi_log)
+#extracts the residuals
+mfi_df_total$model.res.abs <-abs(mfi_df_total$model.res)
+#creates a new column with the absolute value of the residuals
+mfi_df_total$model.res.2 <- mfi_df_total$model.res.abs^2 
+#squares the absolute values of the residuals to provide the more robust estimate
+Levene.Model <- lm(model.res.2 ~ group, data=mfi_df_total) 
+#ANOVA of the squared residuals
+anova(Levene.Model)#  displays the results
+                   #  assumption of homoscedasticity not violated !!!
+# the p value is greater than 0.05, we can say that the variance of the residuals is equal and therefore the assumption of homoscedasticity is met 
+
+boxplot(resid(lmer_mfi_log)) #no outliers
+```
+ MLM Assumptions
+ 1. Linearity of the data
+ - Residuals vs Fitted: plots the residuals against observed value and ideally, residual values should be equally and randomly spaced around the horizontal axis.
+ - Yes, assumption holds for MFI log transformed data
+ 2. Normality of residuals
+ - Normal Q-Q. Used to examine whether the residuals are normally distributed. It’s good if residuals points follow the straight dashed line.
+ - Yes, assumption holds for MFI log tranformed data
+ 3. Homogeneity of variances
+
+Remember, for a well fitting regression, we want the plot of our residuals to meet the following criteria: (1) they’re pretty symmetrically distributed (2) they’re relatively small and (3) they don’t follow a clear pattern
+
+
+B. Assess model fit
+```{r Assess model fit}
+# Assess goodness-of-fit measures: R squared
+library(piecewiseSEM)
+
+rsquared(lmer_mfi_log) # get out marginal and conditional R2 values ( also in table)
+
+# 6. Assess data likelihood: What is the probability that we would
+#observe the data we have given the model (i.e. given the
+                                          #predictors we chose and given the ‘best’ parameter
+                                          #estimates for those predictors).
+summary(lmer_mfi_log)
+logLik(lmer_mfi_log) # should always be negative, but closer to 0 is better
+AIC(lmer_mfi_log) # smaller is better (same with BIC)
+```
+
+C. Interpret fixed effects/exponentiate coefficients from log scale
+```{r Intrepet fixed effects}
+
+model_ouptut<- tab_model(lmer_mfi_log, p.val = "kr", 
+                           p.style = "both", 
+                           show.df = TRUE,
+                           show.stat= TRUE)     # 
+
+# get info on fixed effect of group
+# interpret the exponentiated coefficients
+(exp(coef(lmer_mfi_log)$code["(Intercept)"])) # geometric means for each participant - can see they      
+exp(3.48) # 3.48 is unconditional expected mean of total MFI, 32.46 is geometric mean of GFP when               group =  controls and time = BL
+          # control BL = 32.46
+
+# need to exponentiate coefficients for interpretation purposes
+# get info on fixed effect of group
+
+exp(coef(lmer_mfi_log)$code["groupmtbi"])
+(exp(coef(lmer_mfi_log)$code["groupmtbi"])- 1) * 100 # 65% increased in MFI total score for a 1 unit                                                         increase in group ( e.g mTBI)
+
+(exp(0.35)- 1) * 100 # lower CI 
+(exp(0.66)- 1) * 100 # upper CI
+
+# get info on interaction effect of group and timepoint
+(exp(coef(lmer_mfi_log)$code["timepointt1:groupmtbi"])- 1) * 100  # 22% decreased in MFI total score for interaction between group and timepoint at T1
+
+(exp(-0.41)- 1) * 100 # lower CI 
+(exp(-0.09)- 1) * 100 # upper CI 
+
+# get info on interaction effect of group and timepoint (T1)
+(exp(coef(lmer_mfi_log)$code["timepointt2:groupmtbi"])- 1) * 100  # 24% decreased in MFI total score for interaction between group and timepoint at T2
+
+(exp(-0.44)- 1) * 100 # lower CI 
+(exp(-0.10)- 1) * 100 # upper CI 
+
+```
+
+```{r model interpretation}
+#Using Anova from car, we get p-values for the main effects.
+Anova(lmer_mfi_log, test = "F") # main effect of time and group and interaction effect 
+                    #  The function Anova from car produces tables with p-values
+                    # based on Wald tests, 
+library(lmerTest) # will have to re run model 
+anova(lmer_mfi_log) # f values
+
+library(phia)
+# focus is interaction between group and timepoint
+# We can see the table of average scores, and calculate the simple main effects #  and pairwise interactions:
+# output is a contingency table, where the rows and columns are related to the different
+#levels of both treatments, and each cell contains the adjusted mean of the response for the corresponding interaction of factors
+
+lmer_mfi_means <- interactionMeans(lmer_mfi_log)
+plot(lmer_mfi_means, traces=c("group","timepoint")) # create a plot
+
+testInteractions(lmer_mfi_log, fixed="timepoint", across="group") # Simple effect of group at each                                                                       timepoint
+
+                                                                  # So can see that at each timepoint                                                                    the two groups differ (!) 
+
+testInteractions(lmer_mfi_log, pairwise="timepoint", across="group") # pairwise contrasts between                                                                            timepoints
+
+testInteractions(lmer_mfi_log) # controls had lower MFI scores than mTBI
+
+# results demonstrate mTBI had significantly greater fatigue scores than control, and that difference was most pronunced at BL
+
+#https://www.westernsydney.edu.au/__data/assets/pdf_file/0004/947740/Rmanual_mixedeffects_20160914.pdf
+#https://cran.r-project.org/web/packages/phia/vignettes/phia.pdf
+
+model_output<- tab_model(lmer_mfi_log, p.val = "kr", 
+                           p.style = "both", show.df = TRUE)
+
+print(model_output)
+#analyze(lmer_mfi, CI=95)
+
+#https://neuropsychology.github.io/psycho.R/2018/05/10/interpret_mixed_models.html
+#psycho package
+```
+Interaction means from phia package: Creates a data frame with the adjusted means of a fitted model or the slopes associated to its covariates, plus the standard error of those values, for all the interactions of given factors, including intra-subjects factors in multivariate linear models with intra-subjects designs. These interactions may be plotted by pairs of factors.
+- not sure how to deal with log transform though..?
+
+```{r some visualisation }
+p<-ggpredict(lmer_mfi_log, c("group", "timepoint"), type= "fe")
+
+g2<- plot(p, add.data=FALSE)  # graph predicted values of alpha, change add data to TRUE to see data points
+  
+  print(g2)
+  
+  #The idea behind the ggpredict function is to compute (and visualize) the relationship between a    model predictor
+  #(independent variable) and the model response (dependent variable).
+  
+
+```
+
+```{r post hoc comparisons}
+
+emm2 <- emmeans(lmer_mfi_log, specs = pairwise ~ group|timepoint) # more specific contrast
+#translates to “compare levels of group within each level of timepoint”.
+
+emm3 <- emmeans(lmer_mfi_log, specs = pairwise ~ timepoint|group) # more specific contrast
+ # no effect of timepoint within group (i.e. control and mtbi don't change sig across time)
+
+emeans_mfi_back_trans<- emmeans(lmer_mfi_log, specs = pairwise ~ group|timepoint, type = "response") # use to get out means (back transformed!)
+
+# report these results
+# no message about a multiple comparisons adjustment in the above set of comparisons. This is because the package default is to correct for the number of comparisons within each group instead of across groups. In this case there is only a single comparison in each group
+
+#make into pretty table (but will need to look at emmeans to get out means as well)
+emeans_mfi_back_trans$contrasts %>%
+     rbind() %>% # bonferroni corrected- but for 3 tests ( good to use these)
+     kable() %>%
+     kable_styling()
+
+emeans_mfi_back_trans$emmeans # get out original responses..!! ###yaassss
+
+
+# graphical representation
+mfi_graph<-emmip(lmer_mfi_log, group ~ timepoint, type = "response") + 
+  aes(linetype = group, shape = group) + 
+  scale_color_grey(start=0, end=0) +
+  theme_bw() +
+  labs(y = "MFI total",
+       x = " ") +
+   theme(
+    legend.position = "bottom",
+    legend.box.just = "center",
+    legend.margin = margin(0, 0, 0, 0),
+    legend.title = element_blank()
+    )
+
+interaction.plot(lmer_mfi_log)
+#plot the estimated marginal means (on log scale) # change type to response
+#create a dataframe
+
+lm_mfi.rg <- ref_grid(lmer_mfi_log, cov.keep = 3,
+                      at = list(timepoint = c("bl", "t1", "t2")))
+
+plot(lm_mfi.rg, by = "timepoint")
+
+ 
+
+```
+  https://cran.r-project.org/web/packages/emmeans/vignettes/transformations.html
+Estimated marginal means summarize the model that you fitted to the data – not the data themselves.
+
+```{r put output together}
+library(quantreg)
+#clin_results<-tab_model(lmer_mfi_log, lmer_hads_log, lmer_pcs_log, p.val = "kr", 
+                          # p.style = "both", 
+                           #show.df = TRUE,
+                           #show.stat= TRUE)
+
+#print(clin_results)
+
+
+```
+

@@ -1,0 +1,407 @@
+---
+title: "GFP_MLM"
+author: "Hannah Coyle"
+date: "18/10/2019"
+output:
+  word_document: default
+  html_document: default
+---
+
+
+```{r global options, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figures/',
+                      echo=FALSE, warning=FALSE, message=FALSE)
+
+knitr::opts_knit$set(progress = TRUE, verbose = TRUE)
+```
+
+```{r load libaries, include = FALSE}
+
+library(tidyverse)
+library(knitr)
+library(tidyverse)
+library(Rmisc)
+library(lme4)
+library(sjPlot)
+library(dotwhisker)
+library(broom)
+library(car)
+library(e1071)
+library(ggeffects)
+library(magrittr)
+library(sjPlot)
+library(sjmisc)
+library(sjlabelled)
+library(lme4)
+library(phia)
+library(emmeans)
+```
+
+
+```{r load df, include = FALSE}
+here<-"~/Documents/PHD-Data-Analysis/PHD-Data-Analysis"
+setwd(here) #main path/homedirectory
+setwd("./Analysis/Data")
+load("ds_gfp_wide.Rdata")
+load("ds_gfp_all.Rdata")
+
+```
+
+```{r create average GFP dataframe, include = FALSE}
+
+ds_gfp_av <- ds_gfp_all %>%
+  mutate(av_GFP_BL = (gfp_1_bl+ gfp_2_bl)/2) %>%
+  mutate(av_GFP_T1 = (gfp_1_t1+ gfp_2_t1)/2) %>% 
+  mutate(av_GFP_T2 = (gfp_1_t2+ gfp_2_t2)/2) %>%
+  dplyr::select(code, group, av_GFP_BL, av_GFP_T1, av_GFP_T2)
+
+
+ ds_gfp_av<-set_names(ds_gfp_av, tolower(names(ds_gfp_av)))
+
+ ds_gfp_av<- ds_gfp_av %>%
+  gather(key   = measure,
+       value = av_gfp,
+       dplyr::ends_with('bl'),
+       dplyr::ends_with('t1'),
+       dplyr::ends_with('t2'))  %>% 
+       separate(measure, c("quant", "measure","timepoint")) %>%
+       mutate_if(is.character,funs(factor(.))) %>% ## make factor
+       dplyr::select (- quant)
+  
+```
+
+1.Visualise the data
+```{r visualise n100 amplitude longitudinally, echo = FALSE, include = TRUE}
+#make summary statistics (these were done previously with both epoch windows)
+ds_gfp_summary<- ds_gfp_wide %>%
+  group_by(group, timepoint, epoch_win) %>%
+  dplyr::select(mean_gfp) %>%
+  set_colnames(c("group", "timepoint", "epoch_win", "mean_gfp" )) %>%
+  gather(key="measure", value= "mean_gfp", -group, -timepoint, -epoch_win, na.rm=TRUE) %>%
+  summarySE(measurevar="mean_gfp", groupvars=c("group", "measure", "timepoint", "epoch_win"))
+
+## as a line graph
+gbase<- ds_gfp_summary %>%
+  ggplot(aes(y= mean_gfp, x= timepoint, colour=group))+
+  geom_point() +
+  facet_grid(~epoch_win) +
+  geom_errorbar(aes(ymin = mean_gfp - se, ymax = mean_gfp + se),width=.2) ## optional SE bars,
+
+gline <- gbase + geom_line() 
+ds_gfp_summary$time = as.numeric(ds_gfp_summary$timepoint)
+gline <- gline %+% ds_gfp_summary
+print(gline + aes(x=time)+
+        scale_x_continuous(breaks=c(1:3), labels=c("BL", "T1", "T2")))
+
+# change facet labels
+# New facet label names for time variable
+time.labs <- c("BL", "T1", "T2")
+names(time.labs) <-  c("BL", "T1", "T2")
+# New facet label names for epoch variable
+epoch.labs <- c("92-188 ms", "194-388 ms")
+names(epoch.labs) <- c("first","second")
+
+## as a bar graph 
+gfp_bar<- ds_gfp_summary %>%
+  mutate(measure=factor(measure, labels ="mean_gfp")) %>%
+  ggplot(aes(x=measure, y=mean_gfp, fill=group)) + 
+  geom_bar(position=position_dodge(), stat="identity") +
+  geom_errorbar(aes(ymin=mean_gfp-se, ymax=mean_gfp+se),
+                width=.2,                    # Width of the error bars
+                position=position_dodge(.9))+
+  ylab("Mean GFP ") +
+  facet_grid(epoch_win~timepoint, labeller = labeller(epoch_win = epoch.labs, timepoint = time.labs))+
+  theme_light() +
+  scale_fill_manual(values=c("deepskyblue1","royalblue4"))+
+  #ggtitle(" ROI GFP Digit Span") +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5),
+        axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        legend.position = "none")
+
+print(gfp_bar)
+
+library(ggpubr)
+gfp_box<- ggboxplot(ds_gfp_wide, x = "timepoint", y = "mean_gfp", color = "group",
+          palette = c("#00AFBB", "#E7B800")) +
+  facet_grid(~epoch_win)
+
+print(gfp_box)
+  
+```
+ Bar graph and line graphs show distribution of raw means and give us a visual snapshot of our data
+ 
+```{r visualise individual variability, include = TRUE, echo= FALSE}
+## plot individual points with means as a bar plot
+base_plot <- ggplot(ds_gfp_wide, aes(x = timepoint, y = mean_gfp)) +
+  facet_grid(epoch_win~group, scales = "free_y") +
+  stat_summary(aes(fill = factor(timepoint)), fun.y = mean, geom = "bar", color = "black", na.rm = TRUE) + 
+  scale_fill_manual(values = c("#66c2a5", "#8da0cb", "#7f66c2")) +  # colorbrewer2.org
+  theme(legend.position = "none")
+# put individual lines on bar graph
+subj_means_plot <- base_plot + 
+  stat_summary(aes(group = code), fun.y = mean,  # means from raw data
+               geom = "point", shape = 19, size = 4, color = "skyblue1") +
+  stat_summary(aes(group = code), fun.y = mean, 
+               geom = "line", size = 1.2, color = "skyblue1")
+
+print(subj_means_plot)
+```
+ Bar graph with individual points shows individual trajectories (and what may be outliers/extreme values)
+
+2. Model the data 
+a. check outcome variable is normally distributed
+```{r check normality of outcome measre, echo = TRUE, include = TRUE}
+#plot(ds_gfp_wide$mean_gfp,ds_gfp_wide$timepoint) # crude representation ofdata
+
+#plot(ds_gfp_wide$timepoint,ds_gfp_wide$mean_gfp)
+
+hist(ds_gfp_av$av_gfp) # maybe a bit left skewed - but mostly ok
+
+plot(density(ds_gfp_av$av_gfp, na.rm=TRUE))
+
+# log transforming the outcome variable
+ds_gfp_av$av_gfp_log<-log(ds_gfp_av$av_gfp)
+
+hist(ds_gfp_av$av_gfp_log) # better distributed now
+
+```
+
+Create MLM with timepoint fixed, group fixed, timepoint*group interaction fixed and ID random (n100 amplitude = dependent variable) 
+```{r  Mixed Linear Model and Output, echo = TRUE, include = TRUE}
+# model with raw data
+lmer_gfp_av<- lmer(av_gfp ~ timepoint* group + (1|code), 
+              data = ds_gfp_av, na.action= na.exclude)
+         
+# model with log transformation of data
+lmer_gfp_av_log<- lmer(log(av_gfp) ~ timepoint* group + (1|code), 
+              data = ds_gfp_av, na.action= na.exclude)
+  
+summary(lmer_gfp_av) # output summary of model
+
+#compare models
+ tab_model(lmer_gfp_av, lmer_gfp_av_log,
+                           p.val = "kr", 
+                           p.style = "both", 
+                           show.df = TRUE,
+                           show.stat= TRUE)     # output in HTML format (models show similar results,
+                                                # log slightly better fit)
+ 
+  
+#ranef(lmer_gfp) # look at random effects of model
+
+#  REs measure the individual deviation from the average (i)- n100 amp at BL
+```
+
+ 
+3. Evaluate your model
+A. Check Model Assumptions
+```{r Check  model assumptions,echo= FALSE, include= TRUE}
+plot(lmer_gfp_av_log) # normality of residuals
+
+diagnostics<-plot_model(lmer_gfp_av_log, type = "diag") #normality of residuals looks funny?
+
+print(diagnostics)
+
+# Check Homogeneity of Variance (by statistical testing)
+# Regression models assume that variance of the residuals is equal across groups.
+
+ds_gfp_av$model.res<- residuals(lmer_gfp_av_log) #extracts the residuals and places them in a                                               new column in our original data table
+
+ds_gfp_av$model.res.abs <-abs(ds_gfp_av$model.res) #creates a new column with the                                                   absolute value of the residuals
+
+ds_gfp_av$model.res.2 <- ds_gfp_av$model.res.abs^2 #squares the absolute values of the                                              residuals to provide the more robust estimate
+
+Levene.Model <- lm(model.res.2 ~ group, data=ds_gfp_av) #ANOVA of the squared residuals
+
+anova(Levene.Model) #displays the results
+
+#  assumption of homoscedasticity not violated !!!
+# the p value is greater than 0.05, we can say that the variance of the residuals is equal and therefore the assumption of homoscedasticity is met 
+```
+  # assumptions hold 
+ 
+ B. Assess model fit
+```{r Assess Model Fit}
+
+# Plot predicted vs actual values
+plot(predict(lmer_gfp_av_log),ds_gfp_av$av_gfp,
+      xlab="predicted",ylab="actual")
+abline(a=0,b=1)   # for smaller values model predicts better
+
+# “heteroscedasticity” is when residuals get larger as the prediction moves from small to large (or from large to small).
+
+#Goodness-of-fit measures: R squared
+cor(ds_gfp_av$av_gfp, 
+          fitted(lmer(log(av_gfp) ~ timepoint*group + (1|code),
+          data = ds_gfp_av,
+          na.action = na.exclude)),
+          use= "complete.obs")^2
+
+# R squared between two vectors is just the square of their correlation. 
+
+
+# Assess data likelihood: What is the probability that we would observe the data we have given the model (i.e. given the predictors we chose and given the ‘best’ parameter estimates for those predictors).
+
+summary(lmer_gfp_av_log)
+logLik(lmer_gfp_av_log) # should always be negative, but closer to 0 is better
+                     # indicator of how much unexplained information there is after the model has been fitted
+AIC(lmer_gfp_av_log) # smaller is better (same with BIC)
+``` 
+Useful website for interpreting residual plots
+http://docs.statwing.com/interpreting-residual-plots-to-improve-your-regression/#hetero-header
+
+ C. Exponentiate coefficients from log scale
+```{r Model interpretation, include = TRUE, echo= TRUE}
+
+lmer_gfp_means <- interactionMeans(lmer_gfp_av_log) # same output as emeans
+plot(lmer_gfp_means, traces=c("group","timepoint")) # create a plot
+                                                    # useful as a visualisation
+
+testInteractions(lmer_gfp_av_log, fixed="timepoint", across="group")
+# Simple effect of group at each timepoint
+# but emmeans ( below- is more useful)
+
+
+# get info on fixed effect of group
+# interpret the exponentiated coefficients
+#(exp(coef(lmer_gfp_av_log)$code["(Intercept)"])) # geometric means for each participant - can see they                                               # are similar to actual means
+
+#exp(0.35) # 0.35 is unconditional expected mean of GFP, 1.42 is geometric mean of GFP when group =           # controls and time = BL
+
+mtbi_coef <- (exp(coef(lmer_gfp_av_log)$code["groupmtbi"])- 1) * 100 # 36% increase in GFP for                                                                          increase in group ( e.g mTBI)
+
+mtbi_coef[[1]][1]
+
+(exp(0.13)- 1) * 100 # lower CI 
+(exp(0.49)- 1) * 100 # upper CI 
+```
+
+
+```{r Main effects and interaction effects, include = FALSE}
+summary(lmer_gfp_av_log) # remind self of model output (this shows fixed effects output)
+
+# coef_st = tidy(lmer_gfp_av_log, effects = "fixed",
+#      conf.int = TRUE,
+#      conf.method = "profile")
+# will only work if haven't run with lmerTest (creates a 6th column?)
+# same information as in summary but tidy with CI and without the p values
+
+
+# evaluate the significance of fixed effects in the model
+Anova(lmer_gfp_av_log, test="F") # better to use F than Chi squared with Kenward-Rog df
+
+          # output shows main effects outputs (in this case group and timepoint sig!)
+          # remember distinction between fixed effects from model output and sig of main effects           from Anova test
+          # type II for no sig interaction, type III for sig interaction, never type I for                 unbalanced designs
+
+# anova(lmer_gfp, ddf="Kenward-Roger", refit=FALSE)
+# anova from base R is best used to compare models
+
+# anova is a function in base R. Anova is a function in the car package.
+# The former calculates type I tests, that is, each variable is added in sequential order. The latter calculates type II or III tests. Type II tests test each variable after all the others.
+# Type-II tests, in which each main effect is tested against a model that includes all other terms.
+
+```
+
+```{r post hoc testing, emmeans, include = TRUE}
+
+emeans_gfp<-emmeans(lmer_gfp_av_log, specs = pairwise ~ group:timepoint)
+# all pairwise comparisons with adjusted p values
+
+#The first part, called emmeans, is the estimated marginal means along with the standard errors and confidence intervals.
+
+emeans_back_win<- emmeans(lmer_gfp_av_log, 
+                      specs = pairwise ~ timepoint|group, 
+                      type = "response") # timepoint comparisons
+
+emeans_back_btw<- emmeans(lmer_gfp_av_log, 
+                      specs = pairwise ~ group|timepoint, 
+                      type = "response") # timepoint comparisons
+
+gfp_means<- emeans_back_win$contrasts %>%
+     rbind() %>% # bonferroni corrected- but for 3 tests ( good to use these)
+     as.data.frame()  #  p values are corrected for multiple comparisons but are in long form
+     
+
+gfp_contrasts<-emeans_back_btw$contrasts %>%
+     rbind() %>% # bonferroni corrected- but for 3 tests ( good to use these)
+     as.data.frame() %>%  #  p values are corrected for multiple comparisons but are in long form
+     mutate(p.value = round(p.value, digits =4)) 
+
+print(gfp_means)
+
+print(gfp_contrasts)
+
+```
+
+```{rgraph estimated means from model}
+gfp_graph<-emmip(lmer_gfp_av_log, group ~ timepoint, type = "response") + 
+  aes(linetype = group, shape = group) + 
+  scale_color_grey(start=0, end=0) +
+  theme_bw() +
+  labs(y = "Average GFP",
+       x = " ") +
+   theme(
+    legend.position = "bottom",
+    legend.box.just = "center",
+    legend.margin = margin(0, 0, 0, 0),
+    legend.title = element_blank()
+    )
+
+```
+
+
+The intercept becomes less interesting when the predictor variables are not centered and are continuous. In this particular model, the intercept is the expected mean for log(GFP) when group is control and time is BL.
+
+In summary, when the outcome variable is log transformed, it is natural to interpret the exponentiated regression coefficients.  These values correspond to changes in the ratio of the expected geometric means of the original outcome variable.
+
+ # Results Summary
+ Model = significant fixed effect of group
+ Anova = main effect of group and of time  point
+ 
+Post hoc comparison results show mTBI group have higher GFP amplitude at BL compared to controls (p= =0.0024,  and at  T2 (p = 0.028). No sig differences within group across time point.
+
+
+Optional visualisation of  marginal effects. For MLM with interaction terms, marginal effects are considered easier to interpret than coefficients.
+See 
+-https://cran.r-project.org/web/packages/ggeffects/vignettes/introduction_randomeffects.html
+- https://strengejacke.github.io/sjPlot/articles/plot_interactions.html for vignetttes.
+  
+  
+```{r Visualise marginal effects of model, include = FALSE, echo = FALSE}
+
+ #  g1<- plot_model(lmer_gfp_av_log, type = "int", mdrt.values = "meansd") # automatically  plot                                                                                     # interaction effects
+ #  print(g1)
+ #  
+ #  #another way of visualising same info
+ # 
+ #  p <- ggpredict(lmer_gfp_av_log, c("group", "timepoint"), type= "fe") # another way of visualising same info
+ #  g2<- plot(p, add.data=FALSE)  # graph predicted values of alpha, change add data to TRUE to see data                                      points
+ #  
+ #  print(g2)
+ #  
+ #  #The default, type = "fe", means that predictions are on the population-level and do not account 
+ #  #for the random effect variances. Intervals are confidence intervals for the predicted values.
+ # 
+ #  #The idea behind the ggpredict function is to compute (and visualize) the relationship between a model predictor (independent variable) and the model response (dependent variable).
+ #  
+ #  #Link below is info on customising plots and table output
+ # # https://strengejacke.github.io/sjPlot/articles/custplot.html
+ #  
+```
+
+```{r check if interaction term affects model, include = FALSE}
+# lmer_gfp_1<- lmer(mean_gfp ~ timepoint+ group + (1|code), 
+#               data = ds_gfp_wide, na.action= na.exclude)
+# 
+# lmer_gfp_2<- lmer(mean_gfp ~ timepoint* group + (1|code), 
+#               data = ds_gfp_wide, na.action= na.exclude)
+# 
+# anova(lmer_gfp_1,lmer_gfp_2) # suggests interaction not sig
+#                                # LOWER AIC in model 1 (w/out int term)
+#                                # should i remove?
+```
+
+

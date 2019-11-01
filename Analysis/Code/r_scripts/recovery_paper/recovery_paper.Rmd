@@ -1,0 +1,90 @@
+---
+title: "recovery_paper"
+author: "Hannah Coyle"
+date: "10/10/2019"
+output: html_document
+---
+
+## Recovery paper - code for publication 
+
+
+```{r global options, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figures/',
+                      echo=FALSE, warning=FALSE, message=FALSE)
+
+knitr::opts_knit$set(progress = TRUE, verbose = TRUE)
+```
+
+```{r setup, include=FALSE, echo= FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(knitr)
+library(tidyverse)
+library(Rmisc)
+library(lme4)
+library(sjPlot)
+library(dotwhisker)
+library(broom)
+library(car)
+library(e1071)
+
+load("~/Documents/PHD-Data-Analysis/PHD-Data-Analysis/Analysis/Data/COMBINED_COG_PhD.Rdata")
+#source('~/Documents/PHD-Data-Analysis/PHD-Data-Analysis/Analysis/Code/data_cleaning.R') #if data not already clean
+#exclude participants 
+COMBINED_COG_PhD <-subset(COMBINED_COG_PhD,!code %in% c(7, 16))
+```
+
+```{r create and wrangle df, include=FALSE, echo= TRUE}
+mfi_df <- COMBINED_COG_PhD %>%
+  dplyr::select(starts_with("mfi"), group, code)
+
+## wrangle the data into correct format for all MFI
+mfi_long<- mfi_df %>% 
+  #select(-group, -code) %>%
+  gather(key   = measure,
+         value = sympt_score,
+         dplyr::ends_with('bl'),
+         dplyr::ends_with('t1'),
+         dplyr::ends_with('t2')) %>% 
+        separate(measure, c("measure", "domain","timepoint")) %>%
+        mutate_if(is.character,funs(factor(.))) ## make factor
+
+
+# create summary statistics for all measures
+mfi_long_sum<-mfi_long %>%
+summarySE(measurevar="sympt_score", groupvars=c("group","domain", "timepoint"), na.rm=TRUE)
+
+print(mfi_long_sum)
+
+```
+
+```{r create MFI graph for all domains, include = FALSE}
+# create graph 
+
+mfi_long_1<- mfi_long_sum %>%
+  dplyr::filter(!domain == "total")
+
+gbase<- mfi_long_1 %>%
+  ggplot(aes(y=sympt_score, colour=domain)) + 
+  geom_point() +
+  facet_grid(~group) 
+  #geom_errorbar(aes(ymin = sympt_score - se, ymax = sympt_score + se),
+                #width=.2) ## optional SE bars, make graph look messy though
+
+gline <- gbase + geom_line() 
+#print(gline + aes(x=timepoint)) # lines don't connect
+ 
+# change time to numeric
+mfi_long_1$time = as.numeric(mfi_long_1$timepoint)
+#unique(mfi_long_1$time) # check
+
+#plot graph
+gline <- gline %+% mfi_long_1
+```
+
+```{r print MFI graph, echo= TRUE}
+print(gline + aes(x=time)+
+        scale_x_continuous(breaks=c(1:3), labels=c("BL", "T1", "T2")))
+
+```
+

@@ -1,0 +1,404 @@
+---
+title: "N100_amplitude_MLM"
+author: "Hannah Coyle"
+date: "18/10/2019"
+output: html_document
+---
+title: "N100_Amplitude_MLM"
+author: "Hannah Coyle"
+date: "28/10/2019"
+output: html_document
+---
+
+```{r global options, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figures/',
+                      echo=FALSE, warning=FALSE, message=FALSE)
+
+knitr::opts_knit$set(progress = TRUE, verbose = TRUE)
+```
+
+```{r load libaries, include = FALSE}
+
+library(tidyverse)
+library(knitr)
+library(tidyverse)
+library(Rmisc)
+library(lme4)
+library(sjPlot)
+library(dotwhisker)
+library(broom)
+library(car)
+library(e1071)
+library(ggeffects)
+library(magrittr)
+library(sjPlot)
+library(sjmisc)
+library(sjlabelled)
+library(lme4)
+```
+
+Load data frame with mean n100 amplitde from ROI electrodes across BL, T1, T2 for controls and mTBI
+```{r load df, include = FALSE}
+here<-"~/Documents/PHD-Data-Analysis/PHD-Data-Analysis"
+setwd(here) #main path/homedirectory
+setwd("./Analysis/Data")
+load("n100_df_all.Rdata")
+
+n100_df_all <- n100_all_df #change name of df so matches other
+```
+
+Visualise data as bar and line graphs
+```{r visualise n100 amplitude longitudinally}
+n100_all_summary<- n100_df_all %>%
+  group_by(group, timepoint) %>%
+  dplyr::select(mean_100_amp) %>%
+  set_colnames(c("group", "timepoint", "mean_n100" )) %>%
+  gather(key="measure", value= "mean_n100_amp", -group, -timepoint, na.rm=TRUE) %>%
+  summarySE(measurevar="mean_n100_amp", groupvars=c("group", "measure", "timepoint"))
+
+# as a bar graph
+n100_bar <- n100_all_summary %>%
+  mutate(measure=factor(measure, labels ="n100 amp")) %>%
+  ggplot(aes(x=measure, y=mean_n100_amp, fill=group)) + 
+  geom_bar(position=position_dodge(), stat="identity") +
+  geom_errorbar(aes(ymin=mean_n100_amp-se, ymax=mean_n100_amp+se),
+                width=.2,                    # Width of the error bars
+                position=position_dodge(.9))+
+  ylab("N100 Amplitude") +
+  facet_grid(~timepoint)+
+  theme_light() +
+  scale_fill_manual(values=c("deepskyblue1","royalblue4"))+
+  ggtitle(" ROI Mean N100 amplitude") +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5),
+        axis.title.x=element_blank(),
+        axis.text.x=element_blank())
+
+print(alpha_bar)
+## as a line graph
+gbase<- n100_all_summary %>%
+  ggplot(aes(y= mean_n100_amp, x= timepoint, colour=group))+
+  geom_point() +
+ geom_errorbar(aes(ymin = mean_n100_amp - se, ymax = mean_n100_amp + se),
+ width=.2) ## optional SE bars, make graph look messy though
+
+n100_all_summary$timepoint <- as.factor(n100_all_summary$timepoint)
+
+gline <- gbase + geom_line() 
+        n100_all_summary$time = as.numeric(n100_all_summary$timepoint)
+        
+gline <- gline %+% n100_all_summary
+
+print(gline + aes(x=time)+
+        scale_x_continuous(breaks=c(1:3), labels=c("BL", "T1", "T2"))) # figure out how to invert y axis
+
+  
+```
+ Bar graph and line graphs show distribution of raw means and give us a visual snapshot of our data
+ 
+```{r visualise individual variability}
+## plot individual points with means as a bar plot
+base_plot <- ggplot(n100_df_all, aes(x = timepoint, y = mean_100_amp)) +
+  facet_grid(~group, scales = "free_y") +
+  stat_summary(aes(fill = factor(timepoint)), fun.y = mean, geom = "bar", color = "black", na.rm = TRUE) + 
+  scale_fill_manual(values = c("#66c2a5", "#8da0cb", "#7f66c2")) +  # colorbrewer2.org
+  theme(legend.position = "none")
+# put individual lines on bar graph
+subj_means_plot <- base_plot + 
+  stat_summary(aes(group = code), fun.y = mean,  # means from raw data
+               geom = "point", shape = 19, size = 4, color = "skyblue1") +
+  stat_summary(aes(group = code), fun.y = mean, 
+               geom = "line", size = 1.2, color = "skyblue1")
+
+print(subj_means_plot)
+```
+ Bar graph with individual points shows individual trajectories (and what may be outliers/extreme values)
+
+```{r check normality of outcome measre}
+#plot(n100_all_df$mean_100_amp,n100_all_df$timepoint) # crude representation ofdata
+
+#plot(n100_all_df$timepoint,n100_all_df$mean_100_amp)
+
+hist(n100_df_all$mean_100_amp) #maybe a little left skewed but mostly normal
+
+plot(density(n100_df_all$mean_100_amp, na.rm=TRUE))
+
+# fischer transformation (possible way of dealing with non normality)
+#z <- (n100_df_all$mean_100_amp - min(n100_df_all$mean_100_amp, na.rm=TRUE)) / (max(n100_df_all$mean_100_amp, na.rm=TRUE) - min(n100_df_all$mean_100_amp, na.rm=TRUE)) * 2 - 1
+
+#z <- z[-min(z, na.rm=TRUE)]
+#z <- z[-max(z, na.rm=TRUE)]
+#min(z, na.rm=TRUE)
+#max(z, na.rm=TRUE)
+
+# log transforming the outcome variable
+#n100_df_all$mean_100_amp_log <-log(n100_df_all$mean_100_amp) # will not work because of negative values
+
+```
+
+Construct Mixed Linear Model (n100 amplitude = dependent variable) 
+```{r  Mixed Linear Model and Output}
+  
+# model with raw data
+lmer_n100<- lmer(mean_100_amp ~ timepoint* group + (1|code), 
+              data = n100_df_all, na.action= na.exclude)
+          # timepoint fixed, group fixed, participant random                                    # timepoint*group interaction fixed, id = random
+
+# model with log transformation of data
+lmer_n100_log<- lmer(log(mean_100_amp) ~ timepoint*group + (1|code), 
+              data = n100_df_all) # will not work because of negative numbers
+  
+  
+summary(lmer_n100) # output summary of model
+
+model_ouptut<- tab_model(lmer_n100, p.val = "kr", 
+                           p.style = "both", 
+                           show.df = TRUE,
+                           show.stat= TRUE)     # output in HTML format
+                                                # p-values is based on conditional                                                        F-tests with Kenward-Roger approximation                                                  for the degrees of freedom
+
+print(model_ouptut) #this won't work in markdown (html)
+  
+#ranef(lmer_n100) # look at random effects of model
+
+#  REs measure the individual deviation from the average (i)- n100 amp at BL
+```
+
+The marginal R-squared considers only the variance of the fixed effects, while the conditional R-squared takes both the fixed and random effects into account.
+
+From looking at model summary, can see that the average n100 amplitude at BL is -1.49 and this decreases 0.13 at T1 and by 0.055 at T2. mTBI group have greater amplitude than controls. P value significance testing needed and post hoc testing. 
+ 
+Check model assumptions/ run diagnositics prior to evaluating output
+```{r Check  model assumptions}
+
+plot(lmer_n100) # normality of residuals
+
+diagnostics<-plot_model(lmer_n100, type = "diag") #normality of residuals looks funny?
+
+print(diagnostics)
+
+# Check Homogeneity of Variance (by statistical testing)
+# Regression models assume that variance of the residuals is equal across groups.
+
+n100_df_all$model.res<- residuals(lmer_n100) #extracts the residuals and places them in a                                               new column in our original data table
+
+n100_df_all$model.res.abs <-abs(n100_df_all$model.res) #creates a new column with the                                                   absolute value of the residuals
+
+n100_df_all$model.res.2 <- n100_df_all$model.res.abs^2 #squares the absolute values of the                                              residuals to provide the more robust estimate
+
+Levene.Model <- lm(model.res.2 ~ group, data=n100_df_all) #ANOVA of the squared residuals
+
+anova(Levene.Model) #displays the results
+
+#  assumption of homoscedasticity not violated !!!
+# the p value is greater than 0.05, we can say that the variance of the residuals is equal and therefore the assumption of homoscedasticity is met 
+```
+  # assumptions hold- thought homosedasticity looks a bit funny (but when checked statistically is OK) 
+ 
+Assess model fit
+```{r Assess Model Fit}
+
+# Plot predicted vs actual values
+plot(predict(lmer_n100),n100_df_all$mean_100_amp,
+      xlab="predicted",ylab="actual")
+abline(a=0,b=1)   # for smaller values model predicts better
+
+# “heteroscedasticity” is when residuals get larger as the prediction moves from small to large (or from large to small).
+
+#Goodness-of-fit measures: R squared
+cor(n100_df_all$mean_100_amp, 
+          fitted(lmer(mean_100_amp ~ timepoint*group + (1|code),
+          data = n100_df_all,
+          na.action = na.exclude)),
+          use= "complete.obs")^2
+
+# R squared between two vectors is just the square of their correlation. 
+
+
+# Assess data likelihood: What is the probability that we would observe the data we have given the model (i.e. given the predictors we chose and given the ‘best’ parameter estimates for those predictors).
+
+summary(lmer_n100)
+logLik(lmer_n100) # should always be negative, but closer to 0 is better
+AIC(lmer_n100) # smaller is better (same with BIC)
+``` 
+Useful website for interpreting residual plots
+http://docs.statwing.com/interpreting-residual-plots-to-improve-your-regression/#hetero-header
+
+
+```{r Model interpretation}
+lmer_n100_means <- interactionMeans(lmer_n100) # same output as emeans
+plot(lmer_n100_means, traces=c("group","timepoint")) # create a plot
+                                                    # useful as a visualisation
+
+testInteractions(lmer_n100, fixed="timepoint", across="group")
+# Simple effect of group at each timepoint
+# but emmeans ( below- is more useful)
+
+```
+
+```{r Main effects and interaction effects}
+summary(lmer_n100) # remind self of model output (this shows fixed effects output)
+
+coef_st = tidy(lmer_n100, effects = "fixed",
+     conf.int = TRUE,
+     conf.method = "profile")
+# will only work if haven't run with lmerTest (creates a 6th column?)
+# same information as in summary but tidy with CI and without the p values
+
+
+# evaluate the significance of fixed effects in the model
+Anova(lmer_n100, test="F") # better to use F than Chi squared with Kenward-Rog df
+
+          # output shows main effects outputs (in this case group and timepoint sig!)
+          # remember distinction between fixed effects from model output and sig of main effects           from Anova test
+          # type II for no sig interaction, type III for sig interaction, never type I for                 unbalanced designs
+
+# anova(lmer_n100, ddf="Kenward-Roger", refit=FALSE)
+# anova from base R is best used to compare models
+
+# anova is a function in base R. Anova is a function in the car package.
+# The former calculates type I tests, that is, each variable is added in sequential order. The latter calculates type II or III tests. Type II tests test each variable after all the others.
+# Type-II tests, in which each main effect is tested against a model that includes all other terms.
+
+```
+
+```{r post hoc testing, emmeans}
+emeans_n100<-emmeans(lmer_n100, specs = pairwise ~ group|timepoint) # all comparisons
+
+emeans_win<- emmeans(lmer_n100, 
+                      specs = pairwise ~ timepoint|group) # w/in group comp
+
+emeans_btw<- emmeans(lmer_n100, 
+                      specs = pairwise ~ group|timepoint) # b/tw group comp
+
+#create a dataframe
+
+emeans_win$contrasts %>%
+     summary(infer=TRUE) %>%
+     as.data.frame() %>%  #  p values are corrected for multiple comparisons but are in long form
+     mutate(p.value = round(p.value, digits =4)) 
+                          # no w/in group differences
+
+emeans_btw$contrasts %>%
+     rbind() %>% # bonferroni corrected- but for 3 tests ( good to use these)
+     as.data.frame() %>%  #  p values are corrected for multiple comparisons but are in long form
+     mutate(p.value = round(p.value, digits =4)) 
+                        # btw group differences at all three time points 
+
+emeans_btw$emmeans
+```
+
+
+  # Post hoc comparison results show mTBI group have higher N100 amplitude at BL compared to controls (p= =0.0035,  at T1 (p = 0.15) and at T2 (p= 0.012)
+
+ Am happy with interpretation and reporting of model output - just be good to check it's ok to use raw data, or what an alternative transformation could be ( log won't work for neg values)
+ 
+ 
+ 
+ Following chunks are optional depending on how I want to visualise output ( if want to use- remove # from in front of the chunk)
+ ```{r Visualising coefficients, include=FALSE, echo= FALSE}
+  coeff_g<- dwplot(lmer_n100)
+  
+
+  by_group<- n100_df_all %>% 
+    group_by(group) %>%                     # group data by group
+    do(tidy(lm(mean_100_amp ~ timepoint, data = .))) %>% # run model on each grp
+    dplyr::rename(model=group)  # make model variable
+  
+  coeff_by_grp<- dwplot(by_group, 
+         vline = geom_vline(xintercept = 0, colour = "grey60", linetype = 2)) + # plot line at zero _behind_ coefs
+    theme_bw() + xlab("Coefficient Estimate") + ylab("") +
+    ggtitle("Predicting Alpha Power by Group") +
+    theme(plot.title = element_text(face="bold"),
+          legend.position = c(0.007, 0.01),
+          legend.justification = c(0, 0),
+          legend.background = element_rect(colour="grey80"),
+          legend.title.align = .5) 
+  
+  print(coeff_by_grp)
+  
+```
+Coefficients by fixed effects and interaction effects and then by group and timepoint
+
+Visualise marginal effects. For MLM with interaction terms, marginal effects are considered easier to interpret than coefficients.
+See 
+-https://cran.r-project.org/web/packages/ggeffects/vignettes/introduction_randomeffects.html
+- https://strengejacke.github.io/sjPlot/articles/plot_interactions.html for vignetttes.
+  
+  
+```{r Visualise marginal effects of model, include = FALSE, echo = False}
+
+  g1<- plot_model(lmer_n100, type = "int", mdrt.values = "meansd") # automatically  plot                                                                                     # interaction effects
+  print(g1)
+  
+  #another way of visualising same info
+
+  p <- ggpredict(lmer_n100, c("group", "timepoint"), type= "fe") # another way of visualising same info
+  g2<- plot(p, add.data=FALSE)  # graph predicted values of alpha, change add data to TRUE to see data                                      points
+  
+  print(g2)
+  
+  #The default, type = "fe", means that predictions are on the population-level and do not account 
+  #for the random effect variances. Intervals are confidence intervals for the predicted values.
+
+  #The idea behind the ggpredict function is to compute (and visualize) the relationship between a model predictor (independent variable) and the model response (dependent variable).
+  
+  #Link below is info on customising plots and table output
+ # https://strengejacke.github.io/sjPlot/articles/custplot.html
+  
+```
+
+```{r check if interaction term affects model}
+lmer_n100_1<- lmer(mean_100_amp ~ timepoint+ group + (1|code), 
+              data = n100_df_all, na.action= na.exclude)
+
+lmer_n100_2<- lmer(mean_100_amp ~ timepoint* group + (1|code), 
+              data = n100_df_all, na.action= na.exclude)
+
+anova(lmer_n100_1,lmer_n100_2) # suggests interaction not sig
+                               # LOWER AIC in model 1 (w/out int term)
+                               # should i remove?
+```
+
+
+```{r graph estimated marginal means}
+
+n100_graph<-emmip(lmer_n100, group ~ timepoint, type = "response") + 
+  aes(linetype = group, shape = group) + 
+  scale_color_grey(start=0, end=0) +
+  theme_bw() +
+  labs(y = "Average N100 amplitude",
+       x = " ") +
+   theme(
+    legend.position = "bottom",
+    legend.box.just = "center",
+    legend.margin = margin(0, 0, 0, 0),
+    legend.title = element_blank()
+    )
+
+```
+
+```{r put output together}
+
+#neural_results<-tab_model(lmer_alpha_log, lmer_gfp_av_log, lmer_n100, p.val = "kr", 
+                           #p.style = "both", 
+                           #show.df = TRUE,
+                           #show.stat= TRUE)
+
+#print(neural_results)
+
+
+```
+
+
+```{r save all neural measures in a plot}
+library(ggpubr)
+ggarrange(alpha_graph, gfp_graph, n100_graph, 
+          labels = c("A", "B", "C"),
+          ncol = 3, nrow = 1,
+          common.legend = TRUE, legend = "bottom")
+
+
+ggsave("neural_geo_means_pubvers.jpg", plot = last_plot(), device = NULL, path = NULL,
+       scale = 1, width = 3, height = 5)
+```

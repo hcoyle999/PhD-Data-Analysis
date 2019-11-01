@@ -1,5 +1,5 @@
 
-## ---- Libraries ----
+## ---- Load libraries ----
 
 library(tidyverse)
 library(here)
@@ -15,7 +15,7 @@ sat_behav_files <- list.files(pattern=glob2rx("*.txt"),
 head(sat_behav_files)
 length(sat_behav_files)
 
-## ---- SourceFilesAlternative ----
+## ---- Preprocessing SAT files (raw) ----
 ## save the filenames so we can repeat later on
 writeLines(sat_behav_files, "sat_files.lst")
 sat_behav_files <- readLines("sat_files.lst")
@@ -65,10 +65,13 @@ sat_df[sat_df == 0] <- NA
 save(sat_df, file="~/Documents/PHD-Data-Analysis/PHD-Data-Analysis/Analysis/Data/sat_df.Rdata")
 
 
-#visualise the data
+## ---- Analyse the SAT data ----
+# first load 
  load("~/Documents/PHD-Data-Analysis/PHD-Data-Analysis/Analysis/Data/sat_df.Rdata")
  
 # Final sample = 17 controls, 20 mtbi (37 in total)
+
+# quick visualise the data
 # boxplot for Average RT
 sat_df %>%
   group_by(group) %>%
@@ -78,7 +81,7 @@ sat_df %>%
   scale_fill_manual(values=c("#999999", "#FFB6C1"))+
   facet_grid(~group)
 setwd("./Analysis/Figures")
-ggsave("Go_No_Go_RT.jpg")
+ggsave("Go_No_Go_RT_box.jpg")
 
 #idenitfy the outlier
 sat_df %>%
@@ -86,6 +89,8 @@ sat_df %>%
   filter(Condition == "NoGo") %>%
   filter(Avg.RT > 300) #control participant number 21
 
+#create summary stats
+library(Rmisc)
 sat_RT_summary<- sat_df %>%
   group_by(group, Condition) %>%
   select(Avg.RT) %>%
@@ -93,7 +98,7 @@ sat_RT_summary<- sat_df %>%
   gather(key="measure", value= "Avg.RT", -group, -Condition, na.rm=TRUE) %>%
   summarySE(measurevar="Avg.RT", groupvars=c("group","Condition", "measure"))
 
-# visualise RT in bar 
+# visualise RT in bar for publication 
 rt_graph<- sat_RT_summary%>%
   #mutate(measure=factor(measure, labels ="alpha")) %>%
   ggplot(aes(x=Condition, y=Avg.RT, fill=group)) + 
@@ -109,6 +114,9 @@ rt_graph<- sat_RT_summary%>%
         plot.subtitle = element_text(hjust = 0.5),
         axis.title.x=element_blank()) 
 
+setwd("./Analysis/Figures")
+ggsave("Go_No_Go_RT_bar.jpg")
+
 #summary statistics 
 sum_sat_df<- sat_df %>%
   group_by(group, Condition) %>%
@@ -118,6 +126,7 @@ sum_sat_df<- sat_df %>%
 #statistical comparisons for RT (with interaction affect)
 sat_aov <- aov (Avg.RT ~ group * Condition, data= sat_df)
 summary(sat_aov)
+etaSquared(sat_aov, anova=TRUE)
 tidy(sat_aov)
 
 #post-hoc testing 
@@ -185,6 +194,7 @@ ggsave("Go_No_Go_Acc_bar.jpg")
 sat_aov_acc <- aov (Accuracy ~ group * Condition, data= sat_df)
 summary(sat_aov_acc)
 tidy(sat_aov_acc)
+etaSquared(sat_aov_acc, anova=TRUE)
 
 # Post- hoc testing
 TukeyHSD(sat_aov_acc, which = "Condition")  #tukey hsd post hoc
@@ -202,7 +212,7 @@ ggarrange(rt_graph, acc_graph,
 ggsave("Go_NoGo_plot_pubvers.jpg")
 
 
-# Correlation analysis
+###---- Correlation analysis ----
 # get into wide format
 sat_df_1 <-sat_df %>%
   group_by(group, Condition) %>%
@@ -318,6 +328,7 @@ g<-CRT_GFP_summary %>%
 g+ ylim(0,3.5)
 ggsave("GFP_CRT.jpg")
 
+##---- Epoch analysis ----
 # check epochs do not differ between groups or conditions
 library(datapasta)
 sat_epoch_df<- tibble::tribble(
@@ -361,7 +372,7 @@ sat_epoch_df<- tibble::tribble(
     130,     107,         106,    "mTBI"
   )
 str(sat_epoch_df)
-at_epoch_df$Group<-factor(at_epoch_df$Group)
+sat_epoch_df$Group<-factor(sat_epoch_df$Group)
 
 summary<-sat_epoch_df %>%
   group_by(Group) %>%
@@ -391,3 +402,12 @@ TukeyHSD(anova, which = "Condition") #Go condition have a sig higher number of e
 
 pairwise.t.test(epoch_df_aov$epoch_number, epoch_df_aov$Condition,
                 p.adjust.method = "BH")
+
+summary<-epoch_df_aov %>%
+  group_by(Condition) %>%
+  select(epoch_number) %>%
+  summarise_all(list(
+    min = ~min,
+    max = ~max,
+    mean = ~mean,
+    sd = ~sd), na.rm=TRUE)

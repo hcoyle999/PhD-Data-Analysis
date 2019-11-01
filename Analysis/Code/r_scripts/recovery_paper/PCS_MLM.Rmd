@@ -1,0 +1,379 @@
+---
+title: "PCS_MLM_Analysis"
+author: "Hannah Coyle"
+date: "01/11/2019"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+---
+```{r global options, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figures/',
+                      echo=FALSE, warning=FALSE, message=FALSE)
+
+knitr::opts_knit$set(progress = TRUE, verbose = TRUE)
+```
+
+
+```{r setup, include=FALSE, echo= FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(knitr)
+library(tidyverse)
+library(Rmisc)
+library(lme4)
+library(sjPlot)
+library(dotwhisker)
+library(broom)
+library(car)
+library(e1071)
+library(ggeffects)
+library(magrittr)
+library(sjPlot)
+library(sjmisc)
+library(sjlabelled)
+library(lme4)
+
+load("~/Documents/PHD-Data-Analysis/PHD-Data-Analysis/Analysis/Data/COMBINED_COG_PhD.Rdata")
+#source('~/Documents/PHD-Data-Analysis/PHD-Data-Analysis/Analysis/Code/data_cleaning.R') #if data not already clean
+#exclude participants 
+COMBINED_COG_PhD <-subset(COMBINED_COG_PhD,!code %in% c(7, 16))
+```
+*Mixed Linear Model Analysis for Post Concussion Symptoms*
+
+1.Visualise the data
+```{r load the df, include = FALSE}
+here<-"~/Documents/PHD-Data-Analysis/PHD-Data-Analysis"
+setwd(here) #main path/homedirectory
+setwd("./Analysis/Data")
+
+load("pcs_sum_data.Rdata") # load prev created dataframe of percentage totals
+                           # called pcs_sev_percent
+
+# create summary statistics
+pcs_sev_long <- pcs_sev_percent %>%
+gather(key   = measure,
+       value = perc_sev,
+       dplyr::ends_with('bl'),
+       dplyr::ends_with('t1'),
+       dplyr::ends_with('t2'))  %>% 
+       separate(measure, c("measure", "domain","timepoint")) %>%
+       mutate_if(is.character,funs(factor(.))) %>% ## make factor
+       dplyr::select (- domain)
+
+pcs_sev_sum <-  pcs_sev_long %>%
+              summarySE(measurevar="perc_sev", 
+              groupvars=c("group","measure", "timepoint"), na.rm=TRUE) # create summary stats
+
+```
+
+Plot PCS severity across time as a bar graph
+```{r plot data over time all domains, echo= FALSE, include= TRUE}
+pcs_bar <- pcs_sev_sum %>%
+  mutate(measure=factor(measure, labels ="PCS")) %>%
+  ggplot(aes(x=measure, y=perc_sev, fill=group)) + 
+  geom_bar(position=position_dodge(), stat="identity") +
+  geom_errorbar(aes(ymin=perc_sev-se, ymax=perc_sev+se),
+                width=.2,                    # Width of the error bars
+                position=position_dodge(.9))+
+  ylab("PCS Severity (% of total score)") +
+  facet_wrap(~timepoint)+
+  theme_light() +
+  scale_fill_manual(values=c("deepskyblue1","royalblue4"))+
+  #ggtitle(" ROI GFP Digit Span") +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5),
+        axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        legend.position = "bottom",
+        legend.title=element_blank(),
+        strip.background = element_rect(
+                           color="dark grey", fill="grey", size=1.5, linetype="solid"),
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank())
+
+print(pcs_bar)
+  
+```
+
+Plot as a line graph
+```{r plot graph, echo= FALSE, include= TRUE}
+#plot graph
+gbase <- ggplot(pcs_sev_sum, aes(y=perc_sev, colour= group)) + 
+  geom_point() #+ facet_grid(~group)
+
+gline <- gbase + geom_line() 
+#print(gline + aes(x=timepoint)) # lines don't connect
+
+# change time to numeric
+pcs_sev_sum$time = as.numeric(pcs_sev_sum$timepoint)
+#unique(pcs_sev_sum$time)
+
+#plot as line graph
+library(viridis)
+gline <- gline %+% pcs_sev_sum
+
+print(gline + aes(x=time)+
+  scale_x_continuous(breaks=c(1:3), labels=c("BL", "T1", "T2")))+
+  theme_minimal() +
+  scale_color_manual(values=c("deepskyblue1", "royalblue4")) +
+  theme(legend.position = c(0.8, 0.9))
+
+```
+
+Plot bar graph with individual data
+```{r plot bar graph, echo= FALSE, message=FALSE, warning=FALSE}
+
+## plot individual points with means as a bar plot
+base_plot <- ggplot(pcs_sev_long, aes(x = timepoint, y = perc_sev)) +
+  facet_grid(~group) +
+  stat_summary(aes(fill = factor(timepoint)), fun.y = mean, geom = "bar", color = "black", na.rm = TRUE) + 
+  scale_fill_manual(values = c("#66c2a5", "#8da0cb", "#7f66c2")) +  # colorbrewer2.org
+  theme(legend.position = "none")
+# put individual lines on bar graph
+subj_means_plot <- base_plot + 
+  stat_summary(aes(group = code), fun.y = mean,  # means from raw data
+               geom = "point", shape = 19, size = 4, color = "skyblue1") +
+  stat_summary(aes(group = code), fun.y = mean, 
+               geom = "line", size = 1.2, color = "skyblue1")
+
+print(subj_means_plot)
+
+```
+Above we can see the group means and the individual participant scores that contribute to them, and how they change across time
+ 
+
+2. Model the data 
+a. check outcome variable is normally distributed
+```{r check outcome variable, include= TRUE, echo = TRUE}
+
+hist(pcs_sev_long$perc_sev) # left skewed 
+
+#Try log transforming the outcome variable
+pcs_sev_long$perc_sev_log <-log(pcs_sev_long$perc_sev)
+
+hist(pcs_sev_long$perc_sev_log) # yes it is now more normally distributed-
+  
+```
+
+Stats Question: best transformation for data with 0's?  Currently using log(y + 1)
+
+Create MLM with timepoint fixed, group fixed, timepoint*group interaction fixed and ID random
+```{r create model, include= TRUE, echo=TRUE}
+
+#response variable as raw data
+lmer_pcs <- lmer(perc_sev ~ timepoint*group + (1|code), data = pcs_sev_long, na.action = na.exclude)
+
+#response variable as log transformed data
+lmer_pcs_log<- lmer((log(perc_sev+1)) ~ timepoint*group + (1|code), data = pcs_sev_long, na.action = na.exclude) #must include constant as log will not work with 0 values
+
+#lmer_hads_box<- boxcox(lmer(sympt_score~timepoint*group + (1|code), data = hads_df_total, na.action = na.exclude),lambda=seq(0,1,by=.1)) #alternative possible transformation method
+                       
+summary(lmer_pcs_log)
+
+# plot_model(lmer_pcs_log, type = "int", 
+#            mdrt.values = "meansd", 
+#            terms = c("timepoint","group")) #A convenient way to automatically plot                                                                        interactions is type = "int", which scans the model                                                             formula for interaction terms and then uses these as                                                            terms-argument.
+```
+
+
+3. Evaluate your model
+A. Check Model Assumptions
+```{r Assumption checkingsm, include = TRUE, echo= TRUE}
+
+plot(lmer_pcs_log) # normality of residuals # doesn't look great
+
+diagnostics<-plot_model(lmer_pcs_log, type = "diag") # 4 plots
+
+print(diagnostics)
+
+# Homogeneity of Variance (by statistical testing)
+    # Regression models assume that variance of the residuals is equal across groups.
+pcs_sev_long$model.res<- residuals(lmer_pcs_log) #extracts the residuals and places them in a new column in our original data table
+pcs_sev_long$model.res.abs <-abs(pcs_sev_long$model.res) #creates a new column with the absolute value of the residuals
+pcs_sev_long$model.res.2 <- pcs_sev_long$model.res.abs^2 #squares the absolute values of the residuals to provide the more robust estimate
+Levene.Model <- lm(model.res.2 ~ group, data=pcs_sev_long) #ANOVA of the squared residuals
+anova(Levene.Model) #displays the results
+            #  assumption of homoscedasticity not violated !!!
+# the p value is greater than 0.05, we can say that the variance of the residuals is equal and therefore the assumption of homoscedasticity is met 
+
+boxplot(resid(lmer_pcs_log)) #box plot 
+
+#https://www.statmethods.net/stats/rdiagnostics.html
+```
+
+ B. Assess model fit
+```{r Assess model fit}
+model_ouptut<- tab_model(lmer_pcs, lmer_pcs_log, p.val = "kr", 
+                          p.style = "both", 
+                         show.df = TRUE, 
+                         show.stat = TRUE) 
+# best approach to obtaining p value for your model
+# significant group effect and timepoint* group interactionn effects
+# only explains 47.5% of model variance with log of PCS
+# without log transfomration explains 67%...?
+
+library(piecewiseSEM)
+
+rsquared(lmer_pcs_log) # get out marginal and conditional R2 values ( also in html table)
+
+
+#Assess data likelihood: What is the probability that we would
+#observe the data we have given the model (i.e. given the
+                                          #predictors we chose and given the ‘best’ parameter
+                                          #estimates for those predictors).
+#summary(lmer_pcs_log)
+logLik(lmer_pcs_log) # should always be negative, but closer to 0 is better
+AIC(lmer_pcs_log) # smaller is better (same with BIC)
+```
+
+
+ C. Exponentiate coefficients from log scale
+```{r Exponentiate coefficients from log scale, echo = FALSE, include = TRUE}
+
+# need to exponentiate coefficients for interpretation purposes
+# get info on main effect of group
+mtbi_coef <- (exp(coef(lmer_pcs_log)$code["groupmtbi"])- 1) * 100 #  does not look                                                                                    right, but added +1 to log transformation
+
+mtbi_coef[[1]][1] # extract first value
+
+#(exp(coef(lmer_pcs_log)$code["groupmtbi"])- 2) * 100 # 300% increase (move decimal place so is 30%?)
+
+(exp(0.98)- 1) * 100 # lower CI 
+(exp(2.25)- 1) * 100 # upper CI 
+
+# get info on interaction effect of group and timepoint
+mtbi_t1_coef<-(exp(coef(lmer_pcs_log)$code["timepointt1:groupmtbi"])- 2) * 100  # 182% decrease in PCS total score for interaction between group and timepoint at T1
+
+mtbi_t1_coef[[1]][1]
+
+(exp(-2.53)- 1) * 100 # lower CI 
+(exp(-0.97)- 1) * 100 # upper CI 
+
+# get info on interaction effect of group and timepoint
+mtbi_t2_coef<- (exp(coef(lmer_pcs_log)$code["timepointt2:groupmtbi"])- 2) * 100  # 187% decrease in PCS total score for interaction between group and timepoint at T1
+
+mtbi_t2_coef[[1]][1]
+
+(exp(-2.92)- 1) * 100 # lower CI 
+(exp(-1.22)- 1) * 100 # upper CI 
+
+## Unsure of all these odds ratios as don't know formula for exponentiating them if added a constant
+```
+
+D. Evaluate model significance
+```{r model interpretation, echo= FALSE, include= TRUE}
+#Using Anova from car, we get p-values for the main effects.
+
+model_ouptut<- tab_model(lmer_pcs_log, p.val = "kr", 
+                           p.style = "both", 
+                         show.df = TRUE, 
+                         show.stat = TRUE)  
+# this is the best approach to obtaining p value for your model
+
+#Anova(lmer_pcs_log, test = "F")
+
+library(phia)
+# focus is interaction between group and timepoint
+# We can see the table of average scores, and calculate the simple main effects #  and pairwise interactions:
+# output is a contingency table, where the rows and columns are related to the different
+#levels of both treatments, and each cell contains the adjusted mean of the response for the corresponding interaction of factors
+
+lmer_pcs_means <- interactionMeans(lmer_pcs_log)
+plot(lmer_pcs_means, traces=c("group","timepoint")) # create a plot
+
+
+#testInteractions(lmer_pcs_log) # controls had lower PCS scores than mTBI at BL
+
+#https://www.westernsydney.edu.au/__data/assets/pdf_file/0004/947740/Rmanual_mixedeffects_20160914.pdf
+#https://cran.r-project.org/web/packages/phia/vignettes/phia.pdf
+
+
+```
+
+E. Post hoc comparisons and extract marginal means
+```{r post hoc comparisons, echo= FALSE, include = TRUE}
+library(emmeans)
+#Using Anova from car, we get p-values for the main effects. Using this to evaluate model significance.
+Anova(lmer_pcs_log, test= "F") # main effect of time and group and interaction effect 
+                    #  The function Anova from car produces tables with p-values
+                    # based on Wald tests, 
+
+
+#emeans_pcs<-emmeans(lmer_pcs_log, specs = pairwise ~ group:timepoint)  #every single comparison
+
+#These results are all on the model scale, so in this case these are estimated mean log response 
+
+#emeans_pcs$emmeans # get means  for each comparison and CI
+
+#emeans_pcs$contrasts # The second part of the output, called contrasts, contains the comparisons of interest.
+
+emeans_pcs_back_trans<- emmeans(lmer_pcs_log, specs = pairwise ~ group:timepoint, type = "response")
+# won't work because not a standard log transformation
+
+lmer_pcs_new<- update(ref_grid(lmer_pcs), tran = make.tran("genlog", 1)) #updates model with new transformation
+# fiddly annoying step to include constance in log transform
+
+emeans_back<- emmeans(lmer_pcs_new, specs = pairwise ~ group|timepoint) # bck transformed means and between group comparisons
+
+pcs_means <-emeans_back$emmeans %>%
+     rbind() %>% # bonferroni corrected- but for 3 tests ( good to use these)
+     as.data.frame()
+    
+
+pcs_contrasts <-emeans_back$contrasts %>%
+     rbind() %>% # bonferroni corrected- but for 3 tests ( good to use these)
+     as.data.frame() %>%  #  p values are corrected for multiple comparisons 
+     mutate(p.value = round(p.value, digits =4)) 
+
+print(pcs_means)
+print(pcs_contrasts)        
+```
+ Problems: 
+ - Amount of variance explained lower in log transformed model.
+ - In log transformed model- assumptions look to be violated 
+ - Not sure what is the best way to transform the reponse variable- given that it has 0's in it- and then if what I've done at the moment is ok...and if back transformations are accurate.
+ - How best to report (logged coefficients vs odd ratios vs back transformed means). 
+ 
+ F. Visualise estiamted means
+```{r visual representation of marginal means, echo = FALSE, include= TRUE }
+pcs_graph<-emmip(lmer_pcs_new, group ~ timepoint, type = "response") + 
+  aes(linetype = group, shape = group) + 
+  scale_color_grey(start=0, end=0) +
+  theme_bw() +
+  labs(y = "PCS total",
+       x = " ") +
+   theme(
+    legend.position = "bottom",
+    legend.box.just = "center",
+    legend.margin = margin(0, 0, 0, 0),
+    legend.title = element_blank()
+    )
+
+print(pcs_graph)
+```
+
+
+
+```{r save all clin measures in a plot, include = FALSE}
+# library(ggpubr)
+# ggarrange(hads_graph, mfi_graph, pcs_graph, 
+#           labels = c("A", "B", "C"),
+#           ncol = 3, nrow = 1,
+#           common.legend = TRUE, legend = "bottom")
+# 
+# 
+# ggsave("clin_geo_means_pubvers.jpg", plot = last_plot(), device = NULL, path = NULL,
+#        scale = 1, width = 3, height = 5)
+```
+
+```{r optional additional visualisation, include = FALSE }
+# p<-ggpredict(lmer_pcs_log, c("group", "timepoint"), type= "fe")
+# 
+# g2<- plot(p, add.data=FALSE)  # graph predicted values of alpha, change add data to TRUE to see data points
+#   
+# print(g2)
+#   
+#   #The idea behind the ggpredict function is to compute (and visualize) the relationship between a model predictor (independent variable) and the model response (dependent variable).
+#   
+```

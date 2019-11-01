@@ -24,7 +24,7 @@ here<-"~/Documents/PHD-Data-Analysis/PHD-Data-Analysis"
 setwd(here) #main path/homedirectory
 #load data (already clean)
 setwd("./Analysis/Data")
-load("COMBINED_COG_PhD.Rdata")
+load("~/Documents/PHD-Data-Analysis/PHD-Data-Analysis/Analysis/Data/COMBINED_COG_PhD.Rdata")
 #source('~/Documents/PHD-Data-Analysis/PHD-Data-Analysis/Analysis/Code/data_cleaning.R') #if data not already clean
 #exclude participants 
 COMBINED_COG_PhD <-subset(COMBINED_COG_PhD,!code %in% c(7, 16))

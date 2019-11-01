@@ -1,0 +1,361 @@
+---
+title: "HADS_MLM_Analysis"
+author: "Hannah Coyle"
+date: "01/10/2019"
+output: html_document
+---
+```{r global options, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figures/',
+                      echo=FALSE, warning=FALSE, message=FALSE)
+
+knitr::opts_knit$set(progress = TRUE, verbose = TRUE)
+```
+
+
+```{r setup, include=FALSE, echo= FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(knitr)
+library(tidyverse)
+library(Rmisc)
+library(lme4)
+library(sjPlot)
+library(dotwhisker)
+library(broom)
+library(car)
+library(e1071)
+library(ggeffects)
+library(magrittr)
+library(sjPlot)
+library(sjmisc)
+library(sjlabelled)
+library(lme4)
+
+load("~/Documents/PHD-Data-Analysis/PHD-Data-Analysis/Analysis/Data/COMBINED_COG_PhD.Rdata")
+#source('~/Documents/PHD-Data-Analysis/PHD-Data-Analysis/Analysis/Code/data_cleaning.R') #if data not already clean
+#exclude participants 
+COMBINED_COG_PhD <-subset(COMBINED_COG_PhD,!code %in% c(7, 16))
+```
+*Mixed Linear Models*
+Resources
+http://bbolker.github.io/mixedmodels-misc/glmmFAQ.html#convergence-warnings
+
+## 1.a. Visualise the data
+```{r create the df, include = FALSE}
+hads_df <- COMBINED_COG_PhD %>%
+  dplyr::select(starts_with("hads"), group, code)
+
+## wrangle the data into correct format
+hads_long<- hads_df %>% 
+  gather(key   = measure,
+         value = sympt_score,
+         dplyr::ends_with('bl'),
+         dplyr::ends_with('t1'),
+         dplyr::ends_with('t2'))
+
+hads_long<- hads_long %>% 
+  separate(measure, c("measure", "domain","timepoint")) %>%
+  mutate_if(is.character,funs(factor(.))) ## make factor
+
+# create summary statistics
+hads_long<-hads_long %>%
+          summarySE(measurevar="sympt_score", 
+                    groupvars=c("group","domain", "timepoint"),
+                    na.rm=TRUE)
+
+
+hads_df_total <- hads_df %>%
+  dplyr::select(group, code, hads_total_bl, hads_total_t1 ,hads_total_t2) %>%
+  gather(key = measure, value = sympt_score, - group, -code) %>%
+  separate(measure, c("measure", "total", "timepoint")) %>%
+  mutate_if(is.character,funs(factor(.))) %>%
+  dplyr::select(-total)
+
+hads_total_summary <-hads_df_total %>%
+          summarySE(measurevar="sympt_score", 
+                    groupvars=c("group", "timepoint", "measure"),
+                    na.rm=TRUE)
+  
+```
+# Plot domain scores across time
+```{r plot data over time all domains, echo= FALSE, include= FALSE}
+# create graph (code/guide from https://hopstat.wordpress.com/2015/07/09/line-plots-of-longitudinal-summary-data-in-r-using-ggplot2-2/)
+gbase <- ggplot(hads_total_summary, aes(y=sympt_score, colour=group)) + 
+  geom_point() 
+
+gline <- gbase + geom_line() 
+print(gline + aes(x=timepoint)) # lines don't connect
+
+# change time to numeric
+hads_total_summary$time = as.numeric(hads_total_summary$timepoint)
+unique(hads_total_summary$time)
+
+gline <- gline %+% hads_total_summary
+
+```
+
+
+```{r plot graph, echo= FALSE, include= TRUE}
+#plot graph
+
+print(gline + aes(x=time)+
+        ylab("HADS Total Score") +
+        ggtitle("Total mood symptoms by group and timepoint") +
+        scale_x_continuous(breaks=c(1:3), labels=c("BL", "T1", "T2"))) 
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5),
+        axis.title.x=element_blank(),
+        legend.position= c(0.9,0.9),
+        legend.title = element_blank(),
+        legend.background = element_rect(colour = 'grey', fill = 'white', linetype='solid'))
+
+```
+
+
+```{r plot bar graph, echo= FALSE, message=FALSE, warning=FALSE}
+
+## plot individual points with means as a bar plot
+base_plot <- ggplot(hads_df_total, aes(x = timepoint, y = sympt_score)) +
+  facet_grid(~group) +
+  stat_summary(aes(fill = factor(timepoint)), fun.y = mean, geom = "bar", color = "black", na.rm = TRUE) + 
+  scale_fill_manual(values = c("#66c2a5", "#8da0cb", "#7f66c2")) +  # colorbrewer2.org
+  theme(legend.position = "none")
+# put individual lines on bar graph
+subj_means_plot <- base_plot + 
+  stat_summary(aes(group = code), fun.y = mean,  # means from raw data
+               geom = "point", shape = 19, size = 4, color = "skyblue1") +
+  stat_summary(aes(group = code), fun.y = mean, 
+               geom = "line", size = 1.2, color = "skyblue1")
+
+print(subj_means_plot)
+
+```
+Above we can see the group means and the individual participant scores that contribute to them, and how they change across time (query control = 008, T2 and high value?)
+ 
+
+## 2. Model the data 
+
+```{r check outcome variable}
+hist(hads_df_total$sympt_score) # right skewed 
+
+#Try log transforming the outcome variable
+hads_df_total$sympt_score_log <-log(hads_df_total$sympt_score)
+
+boxcox(hads_df_total$sympt_score) ### can't get to work but is suggested as an option
+
+hist(hads_df_total$sympt_score_log) # yes is now normally distributed- but think how this would affect interpretation of data
+  
+```
+
+= Question: best transformation for data with 0's? 
+
+. MLM with timepoint fixed, group fixed, timepoint*group interaction fixed and ID random
+```{r more complex model, include= TRUE, echo=TRUE}
+lmer_hads<- lmer(sympt_score ~ timepoint*group + (1|code), data = hads_df_total, na.action = na.exclude)
+
+lmer_hads_log<- lmer((log(sympt_score+1)) ~ timepoint*group + (1|code), data = hads_df_total, na.action = na.exclude) #log will not work with 0 values
+
+# https://aosmith.rbind.io/2018/09/19/the-log-0-problem/
+
+#lmer_hads_box<- boxcox(lmer(sympt_score~timepoint*group + (1|code), data = hads_df_total, na.action = na.exclude),lambda=seq(0,1,by=.1))
+                       
+summary(lmer_hads)
+summary(lmer_hads_log)
+coef(lmer_hads_log) # have global intercept and mTBI intercept (much better representation of the data)
+
+plot_model(lmer_hads_log, type = "int", mdrt.values = "meansd", terms = c("timepoint","group")) #A convenient way to automatically plot                                                                                      interactions is type = "int", which scans the model                                                                                  formula for interaction terms and then uses these as                                                                                 terms-argument.
+```
+
+Check Model Assumptions
+
+```{r Assumption checkings}
+
+plot(lmer_hads_log) # normality of residuals
+
+diagnostics<-plot_model(lmer_hads_log, type = "diag")
+
+print(diagnostics)
+
+#Homogeneity of Variance (by statistical testing)
+    # Regression models assume that variance of the residuals is equal across groups.
+hads_df_total$model.res<- residuals(lmer_hads_log) #extracts the residuals and places them in a new column in our original data table
+hads_df_total$model.res.abs <-abs(hads_df_total$model.res) #creates a new column with the absolute value of the residuals
+hads_df_total$model.res.2 <- hads_df_total$model.res.abs^2 #squares the absolute values of the residuals to provide the more robust estimate
+Levene.Model <- lm(model.res.2 ~ group, data=hads_df_total) #ANOVA of the squared residuals
+anova(Levene.Model) #displays the results
+            #  assumption of homoscedasticity not violated !!!
+# the p value is greater than 0.05, we can say that the variance of the residuals is equal and therefore the assumption of homoscedasticity is met 
+
+boxplot(resid(lmer_hads_log)) 
+
+#https://www.statmethods.net/stats/rdiagnostics.html
+```
+Assumptions
+ 1. Linearity of the data
+ - Residuals vs Fitted: plots the residuals against observed value and ideally, residual values should be equally and randomly spaced around the horizontal axis.
+ - Yes, assumption holds for MFI log transformed data
+ 2. Normality of residuals
+ - Normal Q-Q. Used to examine whether the residuals are normally distributed. It’s good if residuals points follow the straight dashed line.
+ - Yes, assumption holds for MFI log tranformed data
+ 3. Homogeneity of variances
+
+Remember, for a well fitting regression, we want the plot of our residuals to meet the following criteria: (1) they’re pretty symmetrically distributed (2) they’re relatively small and (3) they don’t follow a clear pattern
+
+```{r Assess model fit}
+# Assess goodness-of-fit measures: R squared
+cor(hads_df_total$sympt_score_log, fitted(lmer(sympt_score_log ~ timepoint*group + (1|code),
+                                  data = hads_df_total, na.action = na.exclude)), use= "complete.obs")^2
+# not sure how this works- or why diff to output in table format.
+
+# 6. Assess data likelihood: What is the probability that we would
+#observe the data we have given the model (i.e. given the
+                                          #predictors we chose and given the ‘best’ parameter
+                                          #estimates for those predictors).
+summary(lmer_hads_log)
+logLik(lmer_hads_log) # should always be negative, but closer to 0 is better
+AIC(lmer_hads_log) # smaller is better (same with BIC)
+```
+
+
+
+
+```{r Exponentiate coefficients from log scale}
+
+# need to exponentiate coefficients for interpretation purposes
+# get info on main effect of group
+(exp(coef(lmer_hads_log)$code["groupmtbi"])- 1) * 100 # 149% increased in HADS total score for a 1 unit                                                         increase in group ( e.g mTBI)- does not look                                                           right, but added +1 to log transformation
+
+(exp(coef(lmer_hads_log)$code["groupmtbi"])- 2) * 100 # 49% increase
+(exp(0.42)-2) * 100 # lower CI 
+(exp(1.41)-1) * 100 
+
+# get info on interaction effect of group and timepoint
+(exp(coef(lmer_hads_log)$code["timepointt1:groupmtbi"])- 1) * 100  # 40% decrease in HADS total score for interaction between group and timepoint at T1
+
+(exp(-0.94)- 1) * 100 # lower CI 
+(exp(-0.09)- 1) * 100 # upper CI 
+```
+
+```{r eval model sig and look at  pairwise comparisons and means}
+#Using Anova from car, we get p-values for the main effects.
+Anova(lmer_hads_log, test= "F") # main effect of time and group and interaction effect 
+                    #  The function Anova from car produces tables with p-values
+                    # based on Wald tests, 
+
+
+emeans_hads<-emmeans(lmer_hads_log, specs = pairwise ~ group:timepoint) 
+
+#These results are all on the model scale, so in this case these are estimated mean log response 
+
+emeans_hads$emmeans # get means  for each comparison and CI
+
+emeans_hads$contrasts # The second part of the output, called contrasts, contains the comparisons of interest.
+
+emeans_hads_back_trans<- emmeans(lmer_hads_log, specs = pairwise ~ group:timepoint, type = "response")
+# won't work because not a standard log transformation
+
+
+lmer_hads_new<- update(ref_grid(lmer_hads), tran = make.tran("genlog", 1))
+# fiddly annoying step to add log transform
+
+emeans_back<- emmeans(lmer_hads_new, specs = pairwise ~ group|timepoint) # get out actual means 
+
+hads_contrasts <-emeans_back$contrasts %>%
+     rbind() %>% # bonferroni corrected- but for 3 tests ( good to use these)
+     as.data.frame() %>%  #  p values are corrected for multiple comparisons but are in long form
+     mutate(p.value = round(p.value, digits =4)) 
+
+
+# graphical representation
+emmip(lmer_hads_new, group ~ timepoint, type = "response") + theme_bw() + 
+  labs(y = "Estimated marginal mean\n(log HADS total)",
+       colour = "") #plot the estimated marginal means (on log scale) # change type to response
+
+```
+
+https://garthtarr.github.io/meatR/emmeans.html - good emmeans overview and graphical representation options
+
+
+
+
+```{r model interpretation}
+ #fixed effects
+model_ouptut<- tab_model(lmer_hads_log, p.val = "kr", 
+                           p.style = "both", show.df = TRUE, show.stat = TRUE)  # this is the best approach to obtaining p value for your model
+
+library(phia)
+# focus is interaction between group and timepoint
+# We can see the table of average scores, and calculate the simple main effects #  and pairwise interactions:
+# output is a contingency table, where the rows and columns are related to the different
+#levels of both treatments, and each cell contains the adjusted mean of the response for the corresponding interaction of factors
+
+lmer_hads_means <- interactionMeans(lmer_hads_log)
+plot(lmer_hads_means, traces=c("group","timepoint")) # create a plot
+
+testInteractions(lmer_hads_log, fixed="timepoint", across="group") # Simple effect of group at each                                                                       timepoint
+
+                                                                  # So can see that only at bl timepoint                                                                    the two groups differ (!) 
+
+testInteractions(lmer_hads_log, pairwise="timepoint", across="group") # pairwise contrasts between                                                                            timepoints
+
+testInteractions(lmer_hads_log) # controls had lower HADS scores than mTBI at BL
+
+# results demonstrate mTBI had significantly greater mood scores than control, and that difference was most pronunced at BL
+
+
+
+
+
+```
+Interaction means from phia package: Creates a data frame with the adjusted means of a fitted model or the slopes associated to its covariates, plus the standard error of those values, for all the interactions of given factors, including intra-subjects factors in multivariate linear models with intra-subjects designs. These interactions may be plotted by pairs of factors.
+- not sure how to deal with log transform though..?
+
+
+```{r}
+hads_graph<-emmip(lmer_hads_log, group ~ timepoint, type = "response") + 
+  aes(linetype = group, shape = group) + 
+  scale_color_grey(start=0, end=0) +
+  theme_bw() +
+  labs(y = "HADS total",
+       x = " ") +
+   theme(
+    legend.position = "bottom",
+    legend.box.just = "center",
+    legend.margin = margin(0, 0, 0, 0),
+    legend.title = element_blank()
+    )
+```
+
+```{r some visualisation }
+p<-ggpredict(lmer_hads_log, c("group", "timepoint"), type= "fe")
+
+g2<- plot(p, add.data=FALSE)  # graph predicted values of alpha, change add data to TRUE to see data points
+  
+  print(g2)
+  
+  #The idea behind the ggpredict function is to compute (and visualize) the relationship between a model predictor (independent variable) and the model response (dependent variable).
+  
+
+```
+
+```{r testing model significance...?}
+library(pbkrtest)
+(fmLarge <- lmer((log(sympt_score+1)) ~ timepoint*group + (1|code), data = hads_df_total, na.action = na.exclude))
+
+
+## removing Days
+(fmSmall <- lmer((log(sympt_score+1)) ~ timepoint+ (1|code), data = hads_df_total, na.action = na.exclude))
+
+
+anova(fmLarge,fmSmall)
+n<-KRmodcomp(fmLarge,fmSmall)
+
+getKR(n)
+
+```
+
+ Problems: Not sure what is the best was to transform the reponse variable- given that it has 0's in it- and then if what I've done at the moment is ok...then how do I back transfrom.
+ 
+ Also- when back transforming- those responses, are they means?? And how best to report. 
+ 
+ Have written draft results section but are unsure of numbers

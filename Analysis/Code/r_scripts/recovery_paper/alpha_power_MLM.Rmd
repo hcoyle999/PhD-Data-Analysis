@@ -1,0 +1,346 @@
+---
+title: "Alpha_power_MLM"
+author: "Hannah Coyle"
+date: "18/10/2019"
+output: html_document
+---
+ ##What is the effect of timepoint and group of on alpha power?
+```{r global options, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figures/',
+                      echo=FALSE, warning=FALSE, message=FALSE)
+
+knitr::opts_knit$set(progress = TRUE, verbose = TRUE)
+```
+
+```{r load libaries, include = FALSE}
+
+library(tidyverse)
+library(knitr)
+library(tidyverse)
+library(Rmisc)
+library(lme4)
+library(sjPlot)
+library(dotwhisker)
+library(broom)
+library(car)
+library(e1071)
+library(ggeffects)
+library(magrittr)
+library(sjPlot)
+library(sjmisc)
+library(sjlabelled)
+library(lme4)
+```
+
+# Load data frame with mean alpha power from ROI electrodes across BL, T1, T2 for controls and mTBI
+```{r set up file, include= FALSE}
+here<-"~/Documents/PHD-Data-Analysis/PHD-Data-Analysis"
+setwd(here) #main path/homedirectory
+setwd("./Analysis/Data")
+load("power_df_all.Rdata")
+```
+
+# Visualise data as bar and line graphs
+```{r Visualise alpha power longitudinally}
+
+alpha_df<-power_df_all %>%
+  mutate(code= as.numeric(code)) %>%
+  group_by(group, timepoint) 
+
+alpha_summary<- alpha_df %>%
+  group_by(group, timepoint) %>%
+  dplyr::select(alpha) %>%
+  set_colnames(c("group","timepoint", "alpha")) %>%
+  gather(key="measure", value= "alpha_power", -group, -timepoint, na.rm=TRUE) %>%
+  summarySE(measurevar="alpha_power", groupvars=c("group","measure", "timepoint"))
+
+# quick graph as a bar graph
+alpha_bar <- alpha_summary %>%
+  mutate(measure=factor(measure, labels ="alpha")) %>%
+  ggplot(aes(x=measure, y=alpha_power, fill=group)) + 
+  geom_bar(position=position_dodge(), stat="identity") +
+  geom_errorbar(aes(ymin=alpha_power-se, ymax=alpha_power+se),
+                width=.2,                    # Width of the error bars
+                position=position_dodge(.9))+
+  ylab("Alpha Power") +
+  facet_grid(~timepoint)+
+  theme_light() +
+  scale_fill_manual(values=c("deepskyblue1","royalblue4"))+
+  ggtitle(" ROI Mean Absolute Power Eyes Closed") +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5),
+        axis.title.x=element_blank(),
+        axis.text.x=element_blank())
+
+print(alpha_bar)
+
+ # quick graph as a line graph
+  
+  gbase<- alpha_summary %>%
+    ggplot(aes(y= alpha_power, x= timepoint, colour=group))+
+    geom_point()  #+ facet_grid(~group)
+    #geom_errorbar(aes(ymin = alpha_power - se, ymax = alpha_power + se),
+                  #width=.2) ## optional SE bars, make graph look messy though
+  
+  
+  gline <- gbase + geom_line() 
+  alpha_summary$time = as.numeric(alpha_summary$timepoint)
+  gline <- gline %+% alpha_summary
+  
+  print(gline + aes(x=time)+
+          scale_x_continuous(breaks=c(1:3), labels=c("BL", "T1", "T2")))
+  
+```
+ Bar graph and line graphs show distribution of means  
+ 
+```{r Visualise bar plots}
+## plot individual points with means as a bar plot
+base_plot <- ggplot(power_df_all, aes(x = timepoint, y = alpha)) +
+  facet_grid(~group) +
+  stat_summary(aes(fill = factor(timepoint)), fun.y = mean, geom = "bar", color = "black", na.rm = TRUE) + 
+  scale_fill_manual(values = c("#66c2a5", "#8da0cb", "#7f66c2")) +  # colorbrewer2.org
+  theme(legend.position = "none")
+# put individual lines on bar graph
+subj_means_plot <- base_plot + 
+  stat_summary(aes(group = code), fun.y = mean,  # means from raw data
+               geom = "point", shape = 19, size = 4, color = "skyblue1") +
+  stat_summary(aes(group = code), fun.y = mean, 
+               geom = "line", size = 1.2, color = "skyblue1")
+
+print(subj_means_plot)
+```
+ Bar graph with individual points shows individual trajectories (and what are likely to be outliers)
+
+# Check normality of outcome measure and transform  if necessary
+```{r check normality of outcome measure, include= TRUE, echo= TRUE}
+hist(power_df_all$alpha) # very left skewed
+#Try log transforming the outcome variable
+power_df_all$alpha_log <-log(power_df_all$alpha)
+
+hist(power_df_all$alpha_log) # yes is now normally distributed
+
+alpha_diff<- power_df_all %>%
+  select(group,code,  alpha, timepoint) %>%
+  spread(key=timepoint, value= alpha) %>%
+  mutate(alpha_bl = 0) %>%
+  mutate(alpha_t1= T1-BL) %>%
+  mutate(alpha_t2= T2-BL) %>%
+  select( group, code, alpha_bl, alpha_t1, alpha_t2) %>%
+  gather(key = measure, value = mean_score, - group, -code) %>%
+  separate(measure, c("measure", "timepoint")) %>%
+  mutate_if(is.character,funs(factor(.)))
+
+hist(alpha_diff$mean_score)  
+
+```
+
+
+Design Mixed Linear Model (alpha power = dependent variable) 
+```{r  Mixed Linear Model and Output}
+  
+  lmer_alpha<- lmer(alpha ~ timepoint*group + (1|code), 
+              data = power_df_all) # timepoint fixed, group fixed, participant random                                                                    # timepoint*group interaction fixed, id = random
+  summary(lmer_alpha) # output summary of model
+
+  lmer_alpha_log<- lmer(log(alpha) ~ timepoint*group + (1|code), 
+              data = power_df_all) # timepoint fixed, group fixed, participant random                                                                    # timepoint*group interaction fixed, id = random
+  summary(lmer_alpha_log)
+  
+  model_ouptut<- tab_model(lmer_alpha, lmer_alpha_log, p.val = "kr", 
+                           p.style = "both", 
+                           show.df = TRUE, 
+                           show.stat = TRUE)        # output in HTML format
+                                                   # p-values is based on conditional F-tests with                                                             Kenward-Roger approximation for the degrees of                                                           freedom
+  
+            # for log(alpha) main effect of T1 and main effect of mtbi group?
+  
+  print(model_ouptut) #this won't work in markdown (html)
+  
+  # additional information  (optional)
+  #confint(lmer_alpha) #calculate confidence intervals (2.5% is lower and 97.5% is upper bound)
+  #coef(lmer_alpha_log) # summary of coefficients for each participants
+  
+  Anova(lmer_alpha_log, test="F")
+  Anova(lmer_alpha, test="F") # all are significant (but non log transformed variables)
+```
+
+Check model assumptions/ run diagnositics
+```{r Check assumptions}
+
+plot(lmer_alpha_log)
+
+diagnostics<-plot_model(lmer_alpha_log, type = "diag")
+
+print(diagnostics)
+
+# 4. Homogeneity of Variance (by statistical testing)
+    # Regression models assume that variance of the residuals is equal across groups.
+power_df_all$model.res<- residuals(lmer_alpha_log) #extracts the residuals and places them in a new column in our original data table
+power_df_all$model.res.abs <-abs(power_df_all$model.res) #creates a new column with the absolute value of the residuals
+power_df_all$model.res.2 <- power_df_all$model.res.abs^2 #squares the absolute values of the residuals to provide the more robust estimate
+Levene.Model <- lm(model.res.2 ~ group, data=power_df_all) #ANOVA of the squared residuals
+anova(Levene.Model) #displays the results
+ #p value is 0.06 (so almost significant)
+
+boxplot(resid(lmer_alpha_log)) 
+```
+  # assumptions all hold for alpha power.
+
+```{r Exponentiate coefficients from log scale}
+
+print(model_ouptut) # have a look at output ( # group is significant in this output- but not in below)
+
+# need to exponentiate coefficients for interpretation purposes
+# get info on main effect of group
+(exp(coef(lmer_alpha_log)$code["groupmtbi"])- 1) * 100 # 66% increased in alpha power for a 1 unit                                                         increase in group ( e.g mTBI)
+
+(exp(-0.01)- 1) * 100 # lower CI 
+(exp(1.01)- 1) * 100 # upper CI 
+
+
+# get info on interaction effect of group and timepoint
+(exp(coef(lmer_alpha_log)$code["timepointT1"])- 1) * 100  # 22% decreased in alpha power at T1 (for both groups???)
+
+
+(exp(-0.44)- 1) * 100 # lower CI 
+(exp(-0.06)- 1) * 100 # upper CI 
+
+(exp(coef(lmer_alpha_log)$code["timepointT1:groupmtbi"])- 1) * 100  # 24% decrease in alpha power at T1 for interaction 
+
+(exp(-0.55)- 1) * 100 # lower CI 
+(exp(0.001)- 1) * 100 # upper CI 
+
+```  
+
+```{r evaluate model and post hoc testing }
+
+# main effects (no interaction effects)
+
+library(phia)
+lmer_alpha_means <- interactionMeans(lmer_alpha_log)
+plot(lmer_alpha_means, traces=c("group","timepoint")) # create a plot (just for visualising)
+
+```
+Hmmmm.. so it looks as though there is a main effect of timepoint (ONLY) - with T1 alpha power being sig 
+reduced compared to BL ( but no interaction- suggests its not to do with group).
+
+When I do not log transform alpha, I see a significant effect of timepoint and timepoint*group- ...but then assumptions are all violated. Question for stats consult. 
+
+```{r post hoc comparisons}
+library(emmeans)
+
+Anova(lmer_alpha_log, test= "F") # significant main effect of timepoint
+#emeans_alpha<-emmeans(lmer_alpha_log, specs = pairwise ~ timepoint) # comparisons by timepoint
+
+emeans_alpha<-emmeans(lmer_alpha_log, specs = pairwise ~ group|timepoint) # comparisons ( so can see only 
+#These results are all on the model scale, so in this case these are estimated mean log response for each timepoint and group combination. 
+
+emeans_alpha$emmeans # get means  for each comparison and CI
+
+emeans_mfi$contrasts # The second part of the output, called contrasts, contains the comparisons of interest.
+
+
+emeans_back_win<- emmeans(lmer_alpha_log, 
+                      specs = pairwise ~ timepoint|group, 
+                      type = "response") # timepoint comparisons
+
+emeans_back_btw<- emmeans(lmer_alpha_log, 
+                      specs = pairwise ~ group|timepoint, 
+                      type = "response") # timepoint comparisons
+
+#create a dataframe
+
+alpha_contrasts <-emeans_alpha$contrasts %>%
+     summary(infer=TRUE) %>%
+     as.data.frame() %>%  #  p values are corrected for multiple comparisons but are in long form
+     mutate(p.value = round(p.value, digits =4)) 
+
+
+emeans_back_win$contrasts %>%
+     rbind() %>% # bonferroni corrected- but for 3 tests ( good to use these)
+     as.data.frame() %>%  #  p values are corrected for multiple comparisons but are in long form
+     mutate(p.value = round(p.value, digits =4)) 
+
+emeans_back_btw$contrasts %>%
+     rbind() %>% # bonferroni corrected- but for 3 tests ( good to use these)
+     as.data.frame() %>%  #  p values are corrected for multiple comparisons but are in long form
+     mutate(p.value = round(p.value, digits =4)) 
+        
+```
+  
+  Optional additional analyses/visualisations
+  
+```{r Visualise marginal effects of model}
+
+  g1<- plot_model(lmer_alpha_log, type = "pred", mdrt.values = "meansd") # can change type, "int" automatically plots                                                                          # interaction effects
+
+  print(g1)
+
+  p <- ggpredict(lmer_alpha_log, c("group", "timepoint"), type= "fe") # another way of visualising same info as above
+  g2<- plot(p, add.data=FALSE)  # graph predicted values of alpha, change add data to TRUE to see data points
+  
+  print(g2)
+  
+  #The default, type = "fe", means that predictions are on the population-level and do not account 
+  #for the random effect variances. Intervals are confidence intervals for the predicted values.
+
+  #The idea behind the ggpredict function is to compute (and visualize) the relationship between a model predictor
+  #(independent variable) and the model response (dependent variable).
+  
+  #Link below is info on customising plots and table output
+ # https://strengejacke.github.io/sjPlot/articles/custplot.html
+  
+          
+```
+ # Resource on Model interpretation
+ https://cran.r-project.org/web/packages/margins/vignettes/TechnicalDetails.pdf
+ 
+ 
+```{r Visualising coefficients, include= FALSE}
+ coeff_g<- dwplot(lmer_alpha_log)
+  
+  print(coeff_g)
+  
+  by_group<- power_df_all %>% 
+    group_by(group) %>%                     # group data by group
+    do(tidy(lm(alpha_log ~ timepoint, data = .))) %>% # run model on each grp
+    dplyr::rename(model=group)  # make model variable
+  
+  coeff_by_grp<- dwplot(by_group, 
+         vline = geom_vline(xintercept = 0, colour = "grey60", linetype = 2)) + # plot line at zero _behind_ coefs
+    theme_bw() + xlab("Coefficient Estimate") + ylab("") +
+    ggtitle("Predicting Alpha Power by Group") +
+    theme(plot.title = element_text(face="bold"),
+          legend.position = c(0.007, 0.01),
+          legend.justification = c(0, 0),
+          legend.background = element_rect(colour="grey80"),
+          legend.title.align = .5) 
+  
+  print(coeff_by_grp)
+  
+```
+
+Coefficients by fixed effects and interaction effects and then by group and timepoint
+
+Visualise marginal effects
+For MLM with interaction terms, marginal effects are considered easier to interpret than coefficients
+See #https://cran.r-project.org/web/packages/ggeffects/vignettes/introduction_randomeffects.html
+    #https://strengejacke.github.io/sjPlot/articles/plot_interactions.html for vignetttes.
+
+```{r graph estimated marginal means }
+alpha_graph<-emmip(lmer_alpha_log, group ~ timepoint, type = "response") + 
+  aes(linetype = group, shape = group) + 
+  scale_color_grey(start=0, end=0) +
+  theme_bw() +
+  labs(y = "Average Alpha Power",
+       x = " ") +
+   theme(
+    legend.position = "bottom",
+    legend.box.just = "center",
+    legend.margin = margin(0, 0, 0, 0),
+    legend.title = element_blank()
+    )
+
+```
+
+ 
